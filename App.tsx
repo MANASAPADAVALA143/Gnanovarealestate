@@ -1,43 +1,64 @@
-import { useState } from 'react';
-import Header from './components/Header';
-import Hero from './components/Hero';
-import Problem from './components/Problem';
-import Solution from './components/Solution';
-import HowItWorks from './components/HowItWorks';
-import Results from './components/Results';
-import Pricing from './components/Pricing';
-import FAQ from './components/FAQ';
-import FinalCTA from './components/FinalCTA';
-import Footer from './components/Footer';
-import DemoModal from './components/DemoModal';
-import VoiceCallCenter from './pages/VoiceCallCenter';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './src/contexts/AuthContext'
+import LandingPage from './src/components/LandingPage'
+import HomePage from './src/pages/HomePage'
+import Login from './src/pages/Login'
+import Signup from './src/pages/Signup'
+import DashboardLayout from './src/pages/Dashboard/Layout'
+import DashboardHome from './src/pages/Dashboard/Home'
+import LeadsPage from './src/pages/Dashboard/Leads'
+import SettingsPage from './src/pages/Dashboard/Settings'
+import VoiceCallCenter from './pages/VoiceCallCenter'
 
-function App() {
-  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState<'landing' | 'call-center'>('landing');
-
-  const openDemoModal = () => setIsDemoModalOpen(true);
-  const closeDemoModal = () => setIsDemoModalOpen(false);
-
-  if (currentPage === 'call-center') {
-    return <VoiceCallCenter />;
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    )
   }
-
-  return (
-    <div className="min-h-screen bg-white">
-      <Header onBookDemo={openDemoModal} onNavigateToCallCenter={() => setCurrentPage('call-center')} />
-      <Hero onBookDemo={openDemoModal} />
-      <Problem />
-      <Solution />
-      <HowItWorks />
-      <Results />
-      <Pricing onBookDemo={openDemoModal} />
-      <FAQ />
-      <FinalCTA onBookDemo={openDemoModal} />
-      <Footer />
-      <DemoModal isOpen={isDemoModalOpen} onClose={closeDemoModal} />
-    </div>
-  );
+  
+  return user ? <>{children}</> : <Navigate to="/login" />
 }
 
-export default App;
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/call-center" element={<VoiceCallCenter />} />
+          
+          {/* Dashboard Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardHome />} />
+            <Route path="leads" element={<LeadsPage />} />
+            <Route path="calls" element={<div className="p-6">Calls page coming soon...</div>} />
+            <Route path="properties" element={<div className="p-6">Properties page coming soon...</div>} />
+            <Route path="appointments" element={<div className="p-6">Appointments page coming soon...</div>} />
+            <Route path="analytics" element={<div className="p-6">Analytics page coming soon...</div>} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+          
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}
+
+export default App
