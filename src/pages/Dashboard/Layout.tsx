@@ -13,7 +13,13 @@ import {
   Bell,
   Search,
   Menu,
-  X
+  X,
+  Megaphone,
+  Link as LinkIcon,
+  PenTool,
+  Flame,
+  UserCog,
+  DoorOpen,
 } from 'lucide-react'
 
 export default function DashboardLayout() {
@@ -22,13 +28,22 @@ export default function DashboardLayout() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  const nextAppOrigin =
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_NEXT_APP_URL?.replace(/\/$/, '')) ||
+    'http://localhost:3002'
+
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Leads', href: '/dashboard/leads', icon: Users },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },
+    { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
+    { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
+    { name: 'Open House', href: '/dashboard/open-house', icon: DoorOpen },
+    { name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
 
@@ -80,7 +95,7 @@ export default function DashboardLayout() {
                 className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-blue-600 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    : 'text-slate-200 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -88,6 +103,13 @@ export default function DashboardLayout() {
               </Link>
             )
           })}
+          <a
+            href={`${nextAppOrigin}/dashboard/leads/scored`}
+            className="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors text-slate-200 hover:text-white hover:bg-slate-800"
+          >
+            <Flame className="w-5 h-5" />
+            <span className="font-medium">Hot Leads 🔥</span>
+          </a>
         </nav>
 
         {/* Agent Profile */}

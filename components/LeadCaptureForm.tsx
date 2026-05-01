@@ -17,30 +17,52 @@ export default function LeadCaptureForm() {
     setResult(null)
 
     try {
-      const response = await fetch('/api/vapi/initiate-call', {
+      const response = await fetch('/api/leads/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          source: 'website',
+        }),
       })
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to create lead'
+        try {
+          const data = await response.json()
+          errorMessage = data.error || errorMessage
+        } catch {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`
+        }
+        setResult({
+          type: 'error',
+          message: errorMessage,
+        })
+        return
+      }
 
       const data = await response.json()
 
-      if (response.ok) {
-        setResult({
-          type: 'success',
-          message: `Success! You'll receive a call at ${formData.phone} shortly!`,
-        })
-        setFormData({ name: '', email: '', phone: '', location: '', timeline: 'Immediately' })
-      } else {
-        setResult({
-          type: 'error',
-          message: data.error || 'Failed to initiate call',
-        })
+      setResult({
+        type: 'success',
+        message: data.message || 'Lead captured. AI will call within 2 minutes.',
+      })
+      setFormData({ name: '', email: '', phone: '', location: '', timeline: 'Immediately' })
+    } catch (error: any) {
+      console.error('Network error:', error)
+      let errorMessage = 'Network error. Please try again.'
+      
+      if (error.message) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          errorMessage = 'Cannot connect to server. Please make sure the backend server is running on port 3001.'
+        } else {
+          errorMessage = error.message
+        }
       }
-    } catch (error) {
+      
       setResult({
         type: 'error',
-        message: 'Network error. Please try again.',
+        message: errorMessage,
       })
     } finally {
       setLoading(false)

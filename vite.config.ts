@@ -18,6 +18,10 @@ export default defineConfig({
     },
   },
   server: {
+    // Original SPA (npm run dev) — open http://localhost:3000 (not 5173).
+    port: 3000,
+    strictPort: false,
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

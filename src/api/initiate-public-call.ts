@@ -22,8 +22,14 @@ export async function initiatePublicCall({
     const vapiApiKey = process.env.VAPI_API_KEY || 'c360e136-6f49-4c3b-b346-4125a57245f8'
     const vapiUrl = 'https://api.vapi.ai/call/phone'
 
-    const vapiPayload = {
-      phoneNumber: phone,
+    // Clean phone number (remove spaces, dashes, etc.) and ensure E.164 format
+    const cleanedPhone = phone.replace(/[\s\-\(\)]/g, '').trim()
+    
+    // VAPI API expects customer object with number property (E.164 format)
+    const vapiPayload: any = {
+      customer: {
+        number: cleanedPhone,
+      },
       assistant: {
         model: {
           provider: 'openai',

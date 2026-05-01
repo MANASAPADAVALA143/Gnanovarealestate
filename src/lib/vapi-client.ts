@@ -5,6 +5,10 @@ type InitiateCallParams = {
   agentName: string
   leadId?: string
   agentId?: string
+  /** Overrides default Sarah intro (e.g. no-show recovery) */
+  firstMessage?: string
+  /** Overrides default qualification system prompt */
+  systemPrompt?: string
 }
 
 export class VapiClient {
@@ -18,8 +22,19 @@ export class VapiClient {
     }
   }
 
-  async initiateCall({ phoneNumber, agentName, leadId, agentId }: InitiateCallParams) {
+  async initiateCall({
+    phoneNumber,
+    agentName,
+    leadId,
+    agentId,
+    firstMessage,
+    systemPrompt,
+  }: InitiateCallParams) {
     try {
+      const systemContent =
+        systemPrompt?.trim() ||
+        `You are Sarah, a friendly AI assistant calling on behalf of ${agentName}'s real estate team. Qualify the lead by asking about their budget, timeline, location preferences, and property needs. Keep the call under 3 minutes. Be warm and conversational.`
+
       const response = await fetch(`${this.baseUrl}/call/phone`, {
         method: 'POST',
         headers: this.headers,
@@ -33,7 +48,7 @@ export class VapiClient {
               messages: [
                 {
                   role: 'system',
-                  content: `You are Sarah, a friendly AI assistant calling on behalf of ${agentName}'s real estate team. Qualify the lead by asking about their budget, timeline, location preferences, and property needs. Keep the call under 3 minutes. Be warm and conversational.`,
+                  content: systemContent,
                 },
               ],
             },
@@ -43,6 +58,7 @@ export class VapiClient {
             },
             recordingEnabled: true,
             maxDurationSeconds: 300,
+            ...(firstMessage?.trim() ? { firstMessage: firstMessage.trim() } : {}),
           },
           metadata: {
             leadId,

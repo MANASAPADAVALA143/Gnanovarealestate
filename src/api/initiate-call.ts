@@ -1,11 +1,17 @@
 import { supabase } from '../lib/supabase'
 import { vapiClient } from '../lib/vapi-client'
 
+type InitiateCallOptions = {
+  firstMessage?: string
+  systemPrompt?: string
+}
+
 export async function initiateCall(
   leadPhone: string,
   leadName: string,
   agentId: string,
-  leadSource: string = 'website'
+  leadSource: string = 'website',
+  options?: InitiateCallOptions
 ) {
   try {
     // Get agent details
@@ -24,6 +30,8 @@ export async function initiateCall(
       phoneNumber: leadPhone,
       agentName: agent.full_name,
       agentId,
+      firstMessage: options?.firstMessage,
+      systemPrompt: options?.systemPrompt,
     })
 
     // Log call attempt

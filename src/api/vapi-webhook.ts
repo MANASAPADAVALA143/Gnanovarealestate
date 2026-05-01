@@ -1,9 +1,23 @@
 import { supabase } from '../lib/supabase'
+import { mapVapiToCallOutcome } from '../lib/call-outcome'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
-})
+// Support both Vite (import.meta.env) and Node.js (process.env) contexts
+const getEnvVar = (key: string): string | undefined => {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env[key]
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key]
+  }
+  return undefined
+}
+
+const anthropicApiKey = getEnvVar('VITE_ANTHROPIC_API_KEY') || getEnvVar('ANTHROPIC_API_KEY')
+
+const anthropic = anthropicApiKey ? new Anthropic({
+  apiKey: anthropicApiKey,
+}) : null
 
 type VapiWebhookPayload = {
   type: string
@@ -22,8 +36,37 @@ type VapiWebhookPayload = {
   }
 }
 
-export async function handleVapiWebhook(payload: VapiWebhookPayload) {
+type VapiWebhookMessage = {
+  type: string
+  message?: {
+    type: string
+    functionCall?: {
+      name: string
+      parameters: any
+    }
+    toolCallId?: string
+  }
+  call?: any
+  transcript?: string
+}
+
+export async function handleVapiWebhook(payload: any) {
   try {
+    // Handle different webhook types
+    if (payload.type === 'function-call' || payload.message?.type === 'function-call') {
+      return await handleFunctionCall(payload)
+    }
+
+    if (payload.type === 'call-start' || payload.message?.type === 'call-start') {
+      console.log('Call started:', payload.call?.id)
+      return { success: true }
+    }
+
+    if (payload.type === 'transcript' || payload.message?.type === 'transcript') {
+      console.log('Transcript update received')
+      return { success: true }
+    }
+
     // Only process completed calls
     if (payload.type !== 'call.ended') {
       console.log('Ignoring non-ended call event:', payload.type)
@@ -31,7 +74,16 @@ export async function handleVapiWebhook(payload: VapiWebhookPayload) {
     }
 
     const { call } = payload
+    const endedReason = call?.endedReason ?? call?.endReason ?? payload?.endedReason
+    const durationSec = typeof call?.duration === 'number' ? call.duration : 0
+    const hasTranscript = Boolean(call?.transcript && String(call.transcript).trim())
     console.log('Processing completed call:', call.id)
+
+    // Check if Supabase is configured
+    if (!supabase) {
+      console.warn('Supabase not configured. Webhook data will not be saved to database.')
+      return { success: true, message: 'Webhook received but Supabase not configured' }
+    }
 
     // Parse transcript with Claude
     let leadData: any = {}
@@ -72,6 +124,7 @@ export async function handleVapiWebhook(payload: VapiWebhookPayload) {
         appointment_booked: leadData.appointmentBooked || false,
         appointment_date: leadData.appointmentDate || null,
         ai_summary: leadData.summary || null,
+        call_outcome: mapVapiToCallOutcome(endedReason, durationSec, hasTranscript),
       })
       .select()
       .single()
@@ -84,13 +137,15 @@ export async function handleVapiWebhook(payload: VapiWebhookPayload) {
     console.log('Call saved successfully:', callRecord.id)
 
     // Log activity
-    await supabase.from('activity_log').insert({
+    if (supabase) {
+      await supabase.from('activity_log').insert({
       agent_id: call.metadata?.agentId,
       call_id: callRecord.id,
       activity_type: 'call_completed',
-      description: `Call completed with ${leadData.name || 'Unknown'}. Score: ${score}`,
-      metadata: { score, status },
-    })
+        description: `Call completed with ${leadData.name || 'Unknown'}. Score: ${score}`,
+        metadata: { score, status },
+      })
+    }
 
     return {
       success: true,
@@ -104,8 +159,101 @@ export async function handleVapiWebhook(payload: VapiWebhookPayload) {
   }
 }
 
+async function handleFunctionCall(payload: any) {
+  try {
+    const { checkViewingSlots, bookViewing, updateLeadStatus } = await import('./vapi-functions')
+    
+    const functionCall = payload.message?.functionCall || payload.functionCall
+    const toolCallId = payload.message?.toolCallId || payload.toolCallId
+
+    if (!functionCall) {
+      console.warn('No function call found in payload')
+      return { success: true }
+    }
+
+    console.log('Handling function call:', functionCall.name)
+
+    switch (functionCall.name) {
+      case 'check_viewing_slots': {
+        const slots = await checkViewingSlots(functionCall.parameters?.propertyId || '')
+        return {
+          results: [
+            {
+              toolCallId: toolCallId,
+              result: JSON.stringify({
+                available_slots: slots,
+                message: `We have ${slots.length} slots available this week.`,
+              }),
+            },
+          ],
+        }
+      }
+
+      case 'book_viewing': {
+        const booking = await bookViewing(functionCall.parameters)
+        
+        // TODO: Send WhatsApp confirmation (implement when WhatsApp API is available)
+        // await sendWhatsAppConfirmation(booking)
+        
+        return {
+          results: [
+            {
+              toolCallId: toolCallId,
+              result: JSON.stringify({
+                success: true,
+                bookingId: booking.id,
+                message: `Viewing booked for ${booking.date} at ${booking.time}. Confirmation will be sent shortly.`,
+              }),
+            },
+          ],
+        }
+      }
+
+      case 'update_lead_status': {
+        await updateLeadStatus(functionCall.parameters)
+        return {
+          results: [
+            {
+              toolCallId: toolCallId,
+              result: JSON.stringify({ success: true }),
+            },
+          ],
+        }
+      }
+
+      default:
+        console.warn('Unknown function call:', functionCall.name)
+        return {
+          results: [
+            {
+              toolCallId: toolCallId,
+              result: JSON.stringify({ success: true, message: 'Function not implemented' }),
+            },
+          ],
+        }
+    }
+  } catch (error) {
+    console.error('Error handling function call:', error)
+    return {
+      results: [
+        {
+          toolCallId: payload.message?.toolCallId || payload.toolCallId,
+          result: JSON.stringify({ 
+            success: false, 
+            error: error?.message || 'Function call failed' 
+          }),
+        },
+      ],
+    }
+  }
+}
+
 async function parseTranscriptWithClaude(transcript: string) {
   try {
+    if (!anthropic) {
+      console.warn('Anthropic API key not configured, skipping transcript parsing')
+      return {}
+    }
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,

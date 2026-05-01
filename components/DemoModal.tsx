@@ -68,10 +68,11 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
                 />
                 <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option>Select Your Location</option>
-                  <option>USA</option>
-                  <option>UK</option>
-                  <option>Australia</option>
-                  <option>Dubai</option>
+                  <option>🇮🇳 India</option>
+                  <option>🇺🇸 USA</option>
+                  <option>🇬🇧 UK</option>
+                  <option>🇦🇺 Australia</option>
+                  <option>🇦🇪 Dubai</option>
                 </select>
                 <button className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition transform hover:scale-105">
                   Schedule Demo

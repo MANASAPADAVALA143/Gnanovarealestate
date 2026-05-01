@@ -1,0 +1,142 @@
+# Gnanova Real Estate AI - Cursor Rules
+
+## Tech Stack
+- **Frontend**: React 18 + TypeScript + Vite
+- **Styling**: Tailwind CSS (utility-first, mobile-first)
+- **Database**: Supabase (PostgreSQL + pgvector)
+- **AI**: OpenAI GPT-4o, VAPI (Voice AI)
+- **Components**: Custom components with Tailwind (lucide-react icons)
+
+## Project Structure
+- `/src/pages/Dashboard/` - Dashboard pages
+- `/src/components/` - Reusable components
+- `/src/lib/` - Utilities and configs
+- `/server/api/` - Backend API routes (Express)
+- `/supabase/` - Database migrations and functions
+
+## Coding Standards
+
+### TypeScript
+- Use TypeScript for all new files
+- Define proper interfaces for all data types
+- Use strict type checking
+- Export types from separate files when shared
+
+### React
+- Use functional components with hooks
+- useState, useEffect, custom hooks as needed
+- Proper error boundaries
+- Loading states for all async operations
+
+### Styling
+- Tailwind CSS utility classes only
+- Mobile-first responsive design
+- Dark mode support (dark: prefix)
+- Use lucide-react for icons
+- Consistent spacing: p-4, p-6, gap-4, etc.
+- Card-based layouts with shadows
+
+### Supabase
+- Client setup in `/src/lib/supabase.ts`
+- Use Row Level Security (RLS)
+- Real-time subscriptions for live data
+- Proper error handling for queries
+- Type-safe queries with TypeScript
+
+### API Integration
+- OpenAI API for embeddings and content generation
+- VAPI for voice calls
+- Twilio for WhatsApp
+- Error handling with try-catch
+- Loading states and user feedback
+
+### UI/UX
+- Modern, clean, professional design
+- Responsive (mobile, tablet, desktop)
+- Loading skeletons or spinners
+- Toast notifications for actions
+- Confirmation modals for destructive actions
+- Accessible (ARIA labels, keyboard navigation)
+
+### Database Tables
+- `leads` - Lead information
+- `properties` - Property listings with embeddings
+- `calls` - Call logs and transcripts
+- `bookings` / `appointments` - Scheduled viewings
+- `agents` - Agent accounts
+- `outbound_campaigns` - Campaign data
+- `campaign_leads` - Campaign progress
+
+### File Naming
+- Components: PascalCase (e.g., `LeadsTable.tsx`)
+- Pages: PascalCase (e.g., `Dashboard.tsx`)
+- Utils: camelCase (e.g., `formatDate.ts`)
+- Types: PascalCase (e.g., `Lead.ts`, `Property.ts`)
+
+### Code Organization
+- Keep components small and focused
+- Extract reusable logic to custom hooks
+- Separate API calls into service functions
+- Use constants for magic numbers/strings
+- Comment complex logic
+
+### Performance
+- Lazy load heavy components
+- Memoize expensive calculations
+- Debounce search/filter inputs
+- Paginate large lists
+- Optimize images
+
+### Security
+- Never expose API keys in client code
+- Use environment variables
+- Validate all user inputs
+- Sanitize data before display
+- Use RLS policies in Supabase
+
+## Common Patterns
+
+### Loading State
+```tsx
+const [loading, setLoading] = useState(false)
+const [data, setData] = useState<Type[]>([])
+const [error, setError] = useState<string | null>(null)
+```
+
+### Supabase Query
+```tsx
+const { data, error } = await supabase
+  .from('table_name')
+  .select('*')
+  .order('created_at', { ascending: false })
+```
+
+### Error Handling
+```tsx
+try {
+  // operation
+} catch (error) {
+  console.error('Error:', error)
+  setError(error.message)
+}
+```
+
+### Modal Pattern
+```tsx
+const [showModal, setShowModal] = useState(false)
+// Use absolute positioning with backdrop
+```
+
+## AI Features
+- RAG property search with vector embeddings
+- GPT-4 Vision for document parsing
+- AI-generated listing content (5 types)
+- Voice AI calls with VAPI
+- Real-time property recommendations
+
+## Notes
+- Always test on mobile viewport
+- Keep accessibility in mind
+- Follow existing code patterns
+- Write clean, readable code
+- Document complex logic
