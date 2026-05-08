@@ -4,12 +4,22 @@
 # ============================================
 # 
 # INSTRUCTIONS:
-# 1. Copy this content to your .env.local file
+# 1. Copy this content to your .env or .env.local file
 # 2. Replace all REPLACE_ME values with your actual credentials
 # 3. Get credentials from the sources listed below
 # 4. Save and restart terminal/IDE
 #
 # ============================================
+
+# Step 1 — Use real Supabase data in the dashboard (not preview user / empty lists):
+# Set false, then restart `npm run dev`. You will need to sign in.
+VITE_DASHBOARD_PREVIEW=false
+
+# Webhook server (node webhook-server.js): assign inbound VAPI calls to your broker when VAPI does not send metadata.agentId.
+# Must equal public.agents.id (usually the same UUID as your Supabase auth user id for a solo agent).
+# Also used as fallback for outbound call.ended webhooks missing metadata.
+# DEFAULT_AGENT_ID=
+# VITE_DEFAULT_AGENT_ID=
 
 # ============================================
 # REQUIRED: Supabase Database
@@ -20,6 +30,10 @@
 
 SUPABASE_URL=https://REPLACE_ME.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.REPLACE_ME
+
+# REQUIRED for Sign in / Sign up in the web app (browser). Same project as above — from Supabase → Settings → API copy "anon" "public" key (NOT service_role).
+VITE_SUPABASE_URL=https://REPLACE_ME.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.REPLACE_ME_ANON
 
 # ============================================
 # REQUIRED: OpenAI API (for embeddings & AI)

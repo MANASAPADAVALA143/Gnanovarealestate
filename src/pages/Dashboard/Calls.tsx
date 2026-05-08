@@ -156,7 +156,7 @@ function areaPreferenceText(c: Call): string {
 const PAGE_SIZE = 20
 
 export default function CallsPage() {
-  const { agent } = useAuth()
+  const { agent, loading: authLoading } = useAuth()
   const [rows, setRows] = useState<CallLogRow[]>([])
   const [agents, setAgents] = useState<AgentOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -191,7 +191,10 @@ export default function CallsPage() {
   }
 
   const load = useCallback(async () => {
-    if (!agent) return
+    if (!agent) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -225,8 +228,9 @@ export default function CallsPage() {
   }, [agent])
 
   useEffect(() => {
+    if (authLoading) return
     load()
-  }, [load])
+  }, [load, authLoading])
 
   useEffect(() => {
     if (!agent?.id) return
@@ -387,9 +391,24 @@ export default function CallsPage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-600">
+        <div className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p>Loading…</p>
+      </div>
+    )
+  }
+
   if (!agent) {
     return (
-      <div className="flex items-center justify-center h-64 text-slate-600">Sign in to view calls.</div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950 max-w-lg">
+        <h2 className="font-semibold text-lg">No agent profile</h2>
+        <p className="mt-2 text-sm text-amber-900/90">
+          Sign in with an account that has a matching <code className="rounded bg-amber-100/80 px-1">agents</code> row
+          (same id as your Supabase user) to view calls.
+        </p>
+      </div>
     )
   }
 

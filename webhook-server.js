@@ -1,10 +1,11 @@
-// Load environment variables from .env.local
+// Load environment: .env then .env.local (local overrides)
 import dotenv from 'dotenv'
-const result = dotenv.config({ path: '.env.local' })
-if (result.error) {
-  console.warn('Warning: Could not load .env.local:', result.error.message)
+dotenv.config({ path: '.env' })
+const localResult = dotenv.config({ path: '.env.local', override: true })
+if (!localResult.error) {
+  console.log('✅ Loaded .env.local (overrides .env)')
 } else {
-  console.log('✅ Loaded .env.local successfully')
+  console.log('ℹ️ No .env.local — using .env only')
 }
 
 // Debug: Check if keys are loaded

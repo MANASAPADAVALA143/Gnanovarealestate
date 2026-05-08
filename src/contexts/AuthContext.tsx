@@ -1,11 +1,54 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, type Agent } from '../lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/supabase-js'
+
+/** Stable id for local preview — no row required in DB; lists/queries may be empty. */
+export const DASHBOARD_PREVIEW_USER_ID = '00000000-0000-4000-8000-000000000001'
+
+/**
+ * Full dashboard UI without signing in:
+ * - Development (`npm run dev`): ON by default. Set `VITE_DASHBOARD_PREVIEW=false` in `.env` to require login.
+ * - Production build: OFF unless `VITE_DASHBOARD_PREVIEW=true` (not recommended).
+ */
+export function isDashboardPreviewEnabled(): boolean {
+  const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : undefined
+  if (!env) return false
+  if (env.VITE_DASHBOARD_PREVIEW === 'false') return false
+  if (env.VITE_DASHBOARD_PREVIEW === 'true') return true
+  return Boolean(env.DEV)
+}
+
+function previewUser(): User {
+  return {
+    id: DASHBOARD_PREVIEW_USER_ID,
+    email: 'preview@local.dev',
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: new Date().toISOString(),
+  } as User
+}
+
+function previewAgent(): Agent {
+  return {
+    id: DASHBOARD_PREVIEW_USER_ID,
+    full_name: 'Preview Agent',
+    email: 'preview@local.dev',
+    phone: null,
+    company_name: 'Gnanova',
+    location: 'India',
+    subscription_tier: 'trial',
+    subscription_status: 'trialing',
+    created_at: new Date().toISOString(),
+  }
+}
 
 type AuthContextType = {
   user: User | null
   agent: Agent | null
   loading: boolean
+  /** True when using local preview session (no Supabase login). */
+  dashboardPreview: boolean
   signUp: (email: string, password: string, fullName: string, phone: string, location: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
@@ -17,27 +60,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [agent, setAgent] = useState<Agent | null>(null)
   const [loading, setLoading] = useState(true)
+  const [dashboardPreview, setDashboardPreview] = useState(false)
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    function applySession(session: Session | null) {
       if (session?.user) {
+        setDashboardPreview(false)
+        setUser(session.user)
         fetchAgent(session.user.id)
-      } else {
-        setLoading(false)
+        return
       }
-    })
+      if (isDashboardPreviewEnabled()) {
+        setDashboardPreview(true)
+        setUser(previewUser())
+        setAgent(previewAgent())
+        setLoading(false)
+        return
+      }
+      setDashboardPreview(false)
+      setUser(null)
+      setAgent(null)
+      setLoading(false)
+    }
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchAgent(session.user.id)
-      } else {
-        setAgent(null)
-        setLoading(false)
-      }
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) console.warn('[Gnanova] getSession:', error.message)
+        applySession(session)
+      })
+      .catch((err) => {
+        console.warn('[Gnanova] getSession failed (network?) — using preview if enabled:', err)
+        applySession(null)
+      })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session)
     })
 
     return () => subscription.unsubscribe()
@@ -110,14 +170,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    setUser(null)
-    setAgent(null)
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      /* Supabase unreachable — still update local session below */
+    }
+    if (isDashboardPreviewEnabled()) {
+      setDashboardPreview(true)
+      setUser(previewUser())
+      setAgent(previewAgent())
+    } else {
+      setDashboardPreview(false)
+      setUser(null)
+      setAgent(null)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, agent, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, agent, loading, dashboardPreview, signUp, signIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   )

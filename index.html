@@ -25,7 +25,43 @@
     <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
 </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <p style="font-family: system-ui, sans-serif; padding: 2rem; color: #334155">
+        Loading… If this text never disappears, JavaScript did not run — open DevTools (F12) → Console.
+      </p>
+    </div>
+    <script>
+      (function () {
+        if (location.protocol === 'file:') {
+          document.getElementById('root').innerHTML =
+            '<div style="font-family:system-ui;padding:2rem;max-width:36rem;line-height:1.5;color:#0f172a">' +
+            '<h1 style="font-size:1.25rem;margin:0 0 0.75rem">Open this app with the dev server</h1>' +
+            '<p style="margin:0 0 0.75rem">Do not double-click <code>index.html</code>. In a terminal, from the project folder run:</p>' +
+            '<pre style="background:#f1f5f9;padding:1rem;border-radius:8px;overflow:auto">npm install\nnpm run dev</pre>' +
+            '<p style="margin:0.75rem 0 0">Then open <strong>http://localhost:3000</strong> in your browser.</p></div>';
+          return;
+        }
+        var timer = setTimeout(function () {
+          if (window.__GNANOVA_APP_LOADED__) return;
+          var root = document.getElementById('root');
+          if (!root) return;
+          root.innerHTML =
+            '<div style="font-family:system-ui;padding:2rem;max-width:40rem;line-height:1.5;color:#334155">' +
+            '<h1 style="font-size:1.2rem;margin:0 0 0.5rem;color:#b91c1c">The app script did not start</h1>' +
+            '<p style="margin:0 0 0.75rem">Usually the page is not being served by <strong>Vite</strong>, or a script error stopped startup. Try:</p>' +
+            '<ol style="margin:0;padding-left:1.25rem">' +
+            '<li style="margin-bottom:0.5rem">In the project folder run <code style="background:#f1f5f9;padding:0.1rem 0.35rem;border-radius:4px">npm run dev</code> and open <strong>http://localhost:3000/dashboard</strong></li>' +
+            '<li style="margin-bottom:0.5rem">If you ran <code style="background:#f1f5f9;padding:0.1rem 0.35rem;border-radius:4px">npm run build</code>, use <code style="background:#f1f5f9;padding:0.1rem 0.35rem;border-radius:4px">npm run preview</code> (not a generic static server on the repo root).</li>' +
+            '<li>Press <strong>F12</strong> → <strong>Console</strong> and fix any red errors (e.g. failed request for <code>/main.tsx</code> or <code>/assets/...</code>).</li>' +
+            '</ol></div>';
+        }, 12000);
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            if (window.__GNANOVA_APP_LOADED__) clearTimeout(timer);
+          }, 100);
+        });
+      })();
+    </script>
     <script type="module" src="/main.tsx"></script>
   </body>
 </html>

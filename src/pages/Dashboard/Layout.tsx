@@ -24,7 +24,7 @@ import {
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
-  const { agent, signOut } = useAuth()
+  const { agent, signOut, dashboardPreview } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -54,6 +54,14 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {dashboardPreview && (
+        <div className="bg-amber-500 text-amber-950 text-center text-sm font-medium py-2 px-4 z-[60] relative">
+          Preview mode — you can explore every screen without signing in. Data may be empty until Supabase is
+          configured. To require login in dev, set{' '}
+          <code className="rounded bg-amber-600/30 px-1">VITE_DASHBOARD_PREVIEW=false</code> in{' '}
+          <code className="rounded bg-amber-600/30 px-1">.env</code>.
+        </div>
+      )}
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div

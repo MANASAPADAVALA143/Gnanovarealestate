@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import React, { useEffect, useState } from 'react'
+import { useAuth, isDashboardPreviewEnabled } from '../contexts/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 
 export default function Login() {
@@ -7,8 +7,13 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const { signIn, user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const previewAvailable = isDashboardPreviewEnabled()
+
+  useEffect(() => {
+    if (!authLoading && user) navigate('/dashboard', { replace: true })
+  }, [authLoading, user, navigate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -42,8 +47,31 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
+              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 space-y-2">
                 <p className="text-red-400 text-sm">{error}</p>
+                {/fetch|network|Failed to fetch/i.test(error) && previewAvailable && (
+                  <p className="text-slate-300 text-xs">
+                    This usually means the app cannot reach Supabase (wrong URL, offline, or firewall). You can still
+                    open the dashboard in preview mode below.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {previewAvailable && (
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3">
+                <p className="text-emerald-200 text-sm font-medium mb-2">Preview access (no sign-in)</p>
+                <p className="text-emerald-100/80 text-xs mb-3">
+                  Explore all dashboard screens locally without Supabase. Data may be empty until the backend is
+                  configured.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard')}
+                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-sm transition-colors"
+                >
+                  Open dashboard
+                </button>
               </div>
             )}
 

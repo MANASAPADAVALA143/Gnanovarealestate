@@ -12,6 +12,7 @@
 import { supabase } from '../lib/supabase'
 import { mapVapiToCallOutcome } from '../lib/call-outcome'
 import { syncToGoHighLevel } from '../lib/gohighlevel'
+import { resolveVapiAgentId } from '../lib/vapi-resolve-agent'
 
 export interface InboundCallData {
   callId: string
@@ -49,16 +50,30 @@ export async function handleVapiInboundCall(payload: any): Promise<{
 
     console.log('📱 Inbound call from:', customerPhone)
 
+    const resolvedAgentId = resolveVapiAgentId({ call, metadata: payload.metadata })
+    if (resolvedAgentId) {
+      console.log('🧑‍💼 Inbound call assigned to agent:', resolvedAgentId)
+    } else {
+      console.warn(
+        '⚠️ No agent id for inbound call — set DEFAULT_AGENT_ID or VITE_DEFAULT_AGENT_ID in .env (webhook server) so Leads/Calls show this row.'
+      )
+    }
+
     // Check if this lead already exists by phone number
     const { data: existingLead, error: searchError } = await supabase
       .from('leads')
       .select('*')
       .eq('phone', customerPhone)
-      .single()
+      .maybeSingle()
+
+    if (searchError) {
+      console.error('Lead lookup error:', searchError)
+      throw new Error(`Lead lookup failed: ${searchError.message}`)
+    }
 
     let leadId: string
 
-    if (existingLead && !searchError) {
+    if (existingLead) {
       // Lead exists - update
       console.log('📝 Existing lead found:', existingLead.id)
       leadId = existingLead.id
@@ -75,6 +90,12 @@ export async function handleVapiInboundCall(payload: any): Promise<{
         
         console.log('✅ Updated cold lead to warm')
       }
+      if (resolvedAgentId && !existingLead.agent_id) {
+        await supabase
+          .from('leads')
+          .update({ agent_id: resolvedAgentId, updated_at: new Date().toISOString() } as never)
+          .eq('id', leadId)
+      }
     } else {
       // New lead - create
       console.log('📝 Creating new inbound lead')
@@ -87,6 +108,7 @@ export async function handleVapiInboundCall(payload: any): Promise<{
           email: customer?.email || null,
           source: 'inbound',
           status: 'new',
+          ...(resolvedAgentId ? { agent_id: resolvedAgentId } : {}),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -120,14 +142,27 @@ export async function handleVapiInboundCall(payload: any): Promise<{
         .catch(err => console.error('⚠️ GHL sync failed:', err))
     }
 
-    // Create call record
+    const { data: leadForCall } = await supabase
+      .from('leads')
+      .select('name, email')
+      .eq('id', leadId)
+      .maybeSingle()
+    const leadName = leadForCall?.name || customer?.name || 'Inbound Caller'
+    const leadEmail = leadForCall?.email ?? customer?.email ?? null
+
+    // Create call record (agent_id required for dashboard Leads/Calls lists)
     const { data: callRecord, error: callError } = await supabase
       .from('calls')
       .insert({
+        agent_id: resolvedAgentId,
         lead_id: leadId,
         vapi_call_id: callId,
         call_type: 'inbound',
         status: 'active',
+        lead_name: leadName,
+        lead_phone: customerPhone,
+        lead_email: leadEmail,
+        lead_source: 'inbound',
         started_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       })

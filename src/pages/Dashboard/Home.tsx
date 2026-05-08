@@ -12,7 +12,7 @@ type DashboardStats = {
 }
 
 export default function DashboardHome() {
-  const { agent } = useAuth()
+  const { agent, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<DashboardStats>({
     calls_today: 0,
     hot_leads: 0,
@@ -24,10 +24,13 @@ export default function DashboardHome() {
   const [testCallLoading, setTestCallLoading] = useState(false)
 
   useEffect(() => {
-    if (agent) {
-      fetchDashboardData()
+    if (authLoading) return
+    if (!agent) {
+      setLoading(false)
+      return
     }
-  }, [agent])
+    fetchDashboardData()
+  }, [agent, authLoading])
 
   async function fetchDashboardData() {
     try {
@@ -94,6 +97,25 @@ export default function DashboardHome() {
     } finally {
       setTestCallLoading(false)
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-slate-600">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!agent) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950 max-w-lg">
+        <h2 className="font-semibold text-lg">No agent profile</h2>
+        <p className="mt-2 text-sm text-amber-900/90">
+          Add an <code className="rounded bg-amber-100/80 px-1">agents</code> row with id equal to your Supabase user id, or sign up through the app.
+        </p>
+      </div>
+    )
   }
 
   if (loading) {

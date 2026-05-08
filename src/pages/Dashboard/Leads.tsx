@@ -29,7 +29,7 @@ type ResolvedLeadRow = {
 }
 
 export default function LeadsPage() {
-  const { agent } = useAuth()
+  const { agent, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [leads, setLeads] = useState<CallWithLead[]>([])
   const [filteredLeads, setFilteredLeads] = useState<CallWithLead[]>([])
@@ -42,11 +42,14 @@ export default function LeadsPage() {
   const [reassignSaving, setReassignSaving] = useState(false)
 
   useEffect(() => {
-    if (agent) {
-      fetchLeads()
-      loadAgents()
+    if (authLoading) return
+    if (!agent) {
+      setLoading(false)
+      return
     }
-  }, [agent])
+    fetchLeads()
+    loadAgents()
+  }, [agent, authLoading])
 
   useEffect(() => {
     filterLeads()
@@ -209,6 +212,22 @@ export default function LeadsPage() {
   function leadTypeLabel(lt: string | null | undefined): string {
     const t = (lt || 'buyer').toLowerCase()
     return t.charAt(0).toUpperCase() + t.slice(1)
+  }
+
+  if (authLoading) {
+    return <div className="flex items-center justify-center h-64 text-slate-600">Loading...</div>
+  }
+
+  if (!agent) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950 max-w-lg">
+        <h2 className="font-semibold text-lg">No agent profile</h2>
+        <p className="mt-2 text-sm text-amber-900/90">
+          Your account is signed in, but there is no matching row in the <code className="rounded bg-amber-100/80 px-1">agents</code>{' '}
+          table (id must match your Supabase user id). Create one in Supabase or sign up through the app so Leads can load.
+        </p>
+      </div>
+    )
   }
 
   if (loading) {

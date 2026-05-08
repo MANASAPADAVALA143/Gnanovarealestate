@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { mapVapiToCallOutcome } from '../lib/call-outcome'
+import { resolveVapiAgentId } from '../lib/vapi-resolve-agent'
 import Anthropic from '@anthropic-ai/sdk'
 
 // Support both Vite (import.meta.env) and Node.js (process.env) contexts
@@ -95,11 +96,18 @@ export async function handleVapiWebhook(payload: any) {
     const score = calculateLeadScore(leadData)
     const status = getLeadStatus(score)
 
+    const resolvedAgentId = resolveVapiAgentId(payload) ?? call.metadata?.agentId ?? null
+    if (!resolvedAgentId) {
+      console.warn(
+        '[vapi-webhook] No agent id on call metadata and no DEFAULT_AGENT_ID / VITE_DEFAULT_AGENT_ID — dashboard lists filter by agent_id.'
+      )
+    }
+
     // Save to database
     const { data: callRecord, error } = await supabase
       .from('calls')
       .insert({
-        agent_id: call.metadata?.agentId,
+        agent_id: resolvedAgentId,
         vapi_call_id: call.id,
         lead_name: leadData.name || 'Unknown',
         lead_phone: call.phoneNumber,
@@ -139,7 +147,7 @@ export async function handleVapiWebhook(payload: any) {
     // Log activity
     if (supabase) {
       await supabase.from('activity_log').insert({
-      agent_id: call.metadata?.agentId,
+      agent_id: resolvedAgentId,
       call_id: callRecord.id,
       activity_type: 'call_completed',
         description: `Call completed with ${leadData.name || 'Unknown'}. Score: ${score}`,
