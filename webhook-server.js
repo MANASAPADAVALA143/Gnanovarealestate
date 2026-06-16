@@ -24,6 +24,7 @@ import { supabase } from './src/lib/supabase.ts'
 import { generateQueryEmbedding } from './lib/embeddings.ts'
 import { verifyFacebookWebhook, handleFacebookLeadWebhook } from './src/api/facebook-webhook.ts'
 import { handleVapiInboundCall, updateInboundCall } from './src/api/vapi-inbound.ts'
+import { onLeadCreated } from './lib/crm-hooks.ts'
 import { syncToGoHighLevel } from './src/lib/gohighlevel.ts'
 import { 
   createCampaign, 
@@ -48,6 +49,7 @@ import { realtorPortalHandler } from './server/routes/realtor-webhook.ts'
 import openHouseRouter from './server/routes/open-house-routes.ts'
 import { runOpenHouseScheduler } from './server/lib/open-house-scheduler.ts'
 import { runNudgeScheduler } from './server/lib/nudge-scheduler.ts'
+import { handleWhatsAppInboundWebhook } from './server/lib/whatsapp-inbound.ts'
 
 const app = express()
 app.use(cors())
@@ -411,6 +413,15 @@ app.post('/api/leads/create', async (req, res) => {
       })
     }
 
+    await onLeadCreated(getSupabaseServerClient(), {
+      leadId: lead.id,
+      agentId: lead.agent_id || null,
+      source: lead.source || 'website',
+      channel: 'web_form',
+      status: lead.status || 'new',
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || null,
+    })
+
     // 2. NEW: Trigger VAPI call via n8n
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || process.env.VITE_N8N_WEBHOOK_URL
 
@@ -746,6 +757,24 @@ app.post('/api/listing-writer/generate', generateListing)
 // Parse property document with AI
 app.post('/api/listing-writer/parse-document', uploadMiddleware, parseDocument)
 
+// Twilio inbound WhatsApp (urlencoded body — not JSON)
+app.post(
+  '/webhook/whatsapp/inbound',
+  express.urlencoded({ extended: false }),
+  async (req, res) => {
+    try {
+      const { twiml, status } = await handleWhatsAppInboundWebhook(req)
+      res.type('text/xml').status(status).send(twiml)
+    } catch (error) {
+      console.error('WhatsApp inbound webhook error:', error)
+      res
+        .type('text/xml')
+        .status(500)
+        .send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>')
+    }
+  }
+)
+
 // Global error handler (must be last)
 app.use((err, req, res, next) => {
   if (res.headersSent) {
@@ -782,6 +811,7 @@ app.listen(PORT, () => {
   console.log(`\n📍 NEW: Integration Endpoints:`)
   console.log(`   Facebook webhook: http://localhost:${PORT}/api/webhooks/facebook-leads`)
   console.log(`   Inbound calls: http://localhost:${PORT}/api/vapi/inbound`)
+  console.log(`   WhatsApp inbound: http://localhost:${PORT}/webhook/whatsapp/inbound`)
   console.log(`   Test GHL sync: http://localhost:${PORT}/api/test/gohighlevel`)
   
   console.log(`\n📍 NEW: Campaign Endpoints:`)

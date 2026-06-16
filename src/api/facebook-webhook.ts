@@ -11,6 +11,7 @@
 import { supabase } from '../lib/supabase'
 import { syncToGoHighLevel } from '../lib/gohighlevel'
 import { initiatePublicCall } from './initiate-public-call'
+import { onLeadCreated } from '../../lib/crm-hooks'
 
 export interface FacebookLeadData {
   id: string
@@ -141,6 +142,13 @@ export async function handleFacebookLeadWebhook(payload: any): Promise<{
     }
 
     console.log('✅ Facebook lead saved to database:', lead.id)
+
+    void onLeadCreated({
+      leadId: lead.id,
+      source: 'facebook',
+      channel: 'facebook_lead_ads',
+      status: 'new',
+    })
 
     // 2. Sync to GoHighLevel (async, don't wait)
     syncToGoHighLevel({

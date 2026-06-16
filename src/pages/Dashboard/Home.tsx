@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase, type Call } from '../../lib/supabase'
 import { Phone, Users, Calendar, Clock, TrendingUp, TrendingDown, Play } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import OverdueFollowUpsWidget from '../../components/crm/OverdueFollowUpsWidget'
 
 type DashboardStats = {
   calls_today: number
@@ -227,6 +228,8 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
+
+      <OverdueFollowUpsWidget />
 
       {/* Recent Calls */}
       <div className="bg-white rounded-xl border border-slate-200">

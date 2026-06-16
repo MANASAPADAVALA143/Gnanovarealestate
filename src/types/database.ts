@@ -40,6 +40,7 @@ export type Database = {
           budget_mentioned: string | null
           follow_up_action: string | null
           interested_in: string | null
+          pipeline_stage: string | null
         }
         Insert: {
           id?: string
@@ -200,6 +201,96 @@ export type Database = {
           transcript?: string | null
           created_at?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lead_activities: {
+        Row: {
+          id: string
+          lead_id: string
+          type: string
+          content: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          lead_id: string
+          type: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          lead_id?: string
+          type?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: []
+      }
+      lead_tasks: {
+        Row: {
+          id: string
+          lead_id: string
+          agent_id: string | null
+          due_at: string
+          type: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          lead_id: string
+          agent_id?: string | null
+          due_at: string
+          type?: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          lead_id?: string
+          agent_id?: string | null
+          due_at?: string
+          type?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      lead_consent: {
+        Row: {
+          id: string
+          lead_id: string
+          source: string
+          channel: string
+          consent_text: string
+          opted_in: boolean
+          timestamp: string
+          ip_address: string | null
+        }
+        Insert: {
+          id?: string
+          lead_id: string
+          source: string
+          channel: string
+          consent_text?: string
+          opted_in?: boolean
+          timestamp?: string
+          ip_address?: string | null
+        }
+        Update: {
+          id?: string
+          lead_id?: string
+          source?: string
+          channel?: string
+          consent_text?: string
+          opted_in?: boolean
+          timestamp?: string
+          ip_address?: string | null
         }
         Relationships: []
       }

@@ -19,6 +19,8 @@ import AppointmentsPage from './src/pages/Dashboard/Appointments'
 import OpenHousePage from './src/pages/Dashboard/OpenHouse'
 import AnalyticsPage from './src/pages/Dashboard/Analytics'
 import AgentSettingsPage from './src/pages/Dashboard/AgentSettings'
+import PipelinePage from './src/pages/Dashboard/Pipeline'
+import TasksPage from './src/pages/Dashboard/Tasks'
 import VoiceCallCenter from './pages/VoiceCallCenter'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -58,6 +60,8 @@ function App() {
           >
             <Route index element={<DashboardHome />} />
             <Route path="leads" element={<LeadsPage />} />
+            <Route path="pipeline" element={<PipelinePage />} />
+            <Route path="tasks" element={<TasksPage />} />
             <Route path="calls" element={<CallsPage />} />
             <Route path="properties" element={<PropertiesManagementPage />} />
             <Route path="listing-writer" element={<ListingWriter />} />

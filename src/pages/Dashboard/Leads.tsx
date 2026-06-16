@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase, type Call } from '../../lib/supabase'
-import { Search, Filter, Phone, Mail, Calendar, X, PenTool, UserRound } from 'lucide-react'
+import { Search, Phone, Mail, X, PenTool, UserRound } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
+import LeadTimeline from '../../components/crm/LeadTimeline'
+import ConsentBadge from '../../components/crm/ConsentBadge'
 
 type LeadJoin = {
   id: string
@@ -40,6 +42,7 @@ export default function LeadsPage() {
   const [agents, setAgents] = useState<AgentPick[]>([])
   const [resolvedLead, setResolvedLead] = useState<ResolvedLeadRow | null>(null)
   const [reassignSaving, setReassignSaving] = useState(false)
+  const [modalTab, setModalTab] = useState<'details' | 'timeline'>('details')
 
   useEffect(() => {
     if (authLoading) return
@@ -414,16 +417,52 @@ export default function LeadsPage() {
       {selectedLead && (
         <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">Lead Details</h2>
-              <button
-                onClick={() => setSelectedLead(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Lead Details</h2>
+                  {resolvedLead && (
+                    <div className="mt-2">
+                      <ConsentBadge leadId={resolvedLead.id} />
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedLead(null)
+                    setModalTab('details')
+                  }}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="flex gap-2 mt-4">
+                {(['details', 'timeline'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setModalTab(tab)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
+                      modalTab === tab
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab === 'details' ? 'Details' : 'Timeline'}
+                  </button>
+                ))}
+              </div>
             </div>
 
+            {modalTab === 'timeline' && resolvedLead ? (
+              <div className="p-6">
+                <LeadTimeline leadId={resolvedLead.id} agentId={agent?.id} />
+              </div>
+            ) : modalTab === 'timeline' ? (
+              <div className="p-6 text-sm text-slate-500">
+                Link this call to a CRM lead (by phone match) to view the timeline.
+              </div>
+            ) : (
             <div className="p-6 space-y-6">
               {/* Lead Info */}
               <div>
@@ -578,6 +617,7 @@ export default function LeadsPage() {
                 </button>
               </div>
             </div>
+            )}
           </div>
         </div>
       )}

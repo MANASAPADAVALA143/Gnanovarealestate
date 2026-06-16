@@ -76,6 +76,8 @@ TWILIO_AUTH_TOKEN=REPLACE_ME
 # SMS agent alerts (speed + outbound scoring) and 24h nudge cron — E.164, same number may power WhatsApp
 TWILIO_PHONE_NUMBER=+15707084979
 TWILIO_WHATSAPP_FROM=whatsapp:+1234567890
+# Public ngrok URL + path for Twilio signature validation (inbound WhatsApp)
+TWILIO_WEBHOOK_URL=https://your-ngrok-url/webhook/whatsapp/inbound
 
 # ============================================
 # OPTIONAL: Application URLs

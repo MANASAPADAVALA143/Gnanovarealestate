@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 import { normalizePhone } from '../../../../lib/bulk-import-helpers'
 import { toE164 } from '../../../../lib/phone-e164'
+import { onLeadCreated } from '../../../../lib/crm-hooks'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -89,7 +90,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'DB error' }, { status: 500 })
   }
 
-  const leadRow = lead as { id: string }
+  const leadRow = lead as { id: string; agent_id?: string | null; created_at?: string }
+
+  void onLeadCreated(supabase, {
+    leadId: leadRow.id,
+    agentId: leadRow.agent_id ?? null,
+    source,
+    channel: 'portal_intake',
+    status: 'new',
+  })
 
   const { data: logRow, error: logErr } = await supabase
     .from('speed_to_lead_log')

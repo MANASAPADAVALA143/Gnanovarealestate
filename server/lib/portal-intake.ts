@@ -3,6 +3,7 @@ import { toE164 } from '../../lib/phone-e164'
 import { portalBranchingSystemPrompt, PRIYA_CAMPAIGN_FIRST_MESSAGE } from '../../lib/vapi-priya-branching-prompt'
 import { extractZip, matchAgent } from './agent-matcher'
 import { sendAgentSMSAlert } from './sms-alert'
+import { onLeadCreated } from '../../lib/crm-hooks'
 
 export interface NormalisedLead {
   name: string
@@ -246,6 +247,14 @@ export async function handlePortalLead(lead: NormalisedLead): Promise<{ duplicat
   }
 
   const newLeadId = (newLead as { id: string }).id
+
+  void onLeadCreated(supabase, {
+    leadId: newLeadId,
+    agentId,
+    source: sourceDisplay,
+    channel: lead.portal_source,
+    status: 'new',
+  })
 
   await supabase.from('portal_events').insert({
     portal: lead.portal_source,

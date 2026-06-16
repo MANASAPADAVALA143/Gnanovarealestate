@@ -20,6 +20,8 @@ import {
   Flame,
   UserCog,
   DoorOpen,
+  Kanban,
+  ListTodo,
 } from 'lucide-react'
 
 export default function DashboardLayout() {
@@ -35,6 +37,8 @@ export default function DashboardLayout() {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Leads', href: '/dashboard/leads', icon: Users },
+    { name: 'Pipeline', href: '/dashboard/pipeline', icon: Kanban },
+    { name: 'Tasks', href: '/dashboard/tasks', icon: ListTodo },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },
     { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
