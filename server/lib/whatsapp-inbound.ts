@@ -2,6 +2,12 @@ import twilio from 'twilio'
 import type { Request } from 'express'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { recordLeadActivity } from '../../lib/crm-hooks.ts'
+import {
+  recordBotReplyToInbox,
+  recordInboundToInbox,
+  sendWhatsAppOutbound,
+  shouldAutoReply,
+} from './whatsapp-inbox.ts'
 
 export type MatchedLead = {
   id: string
@@ -14,6 +20,7 @@ export type InboundWhatsAppPayload = {
   from: string
   body: string
   messageSid: string
+  mediaUrl?: string | null
 }
 
 let twilioClient: ReturnType<typeof twilio> | null | undefined
@@ -42,10 +49,6 @@ function getTwilioClient(): ReturnType<typeof twilio> | null {
 /** Strip `whatsapp:` prefix and normalize to plain E.164-style number. */
 export function stripWhatsAppPrefix(from: string): string {
   return from.replace(/^whatsapp:/i, '').trim()
-}
-
-function whatsappAddress(phone: string): string {
-  return phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`
 }
 
 function normalizeFromAddress(fromEnv: string | undefined): string | null {
@@ -104,20 +107,9 @@ export function buildAutoReplyText(lead: MatchedLead | null, stage?: string | nu
 }
 
 async function sendWhatsAppReply(toRaw: string, body: string): Promise<string | null> {
-  const client = getTwilioClient()
-  const from = normalizeFromAddress(process.env.TWILIO_WHATSAPP_FROM)
-  if (!client || !from) {
-    console.warn('[whatsapp-inbound] Twilio not configured — reply text only in TwiML fallback')
-    return null
-  }
-
-  const to = whatsappAddress(stripWhatsAppPrefix(toRaw))
   try {
-    const msg = await client.messages.create({ body, from, to })
-    return msg.sid
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[whatsapp-inbound] Twilio send failed:', message)
+    return await sendWhatsAppOutbound(toRaw, body)
+  } catch {
     return null
   }
 }
@@ -198,7 +190,17 @@ export async function processInboundWhatsApp(payload: InboundWhatsAppPayload): P
     console.warn(`[whatsapp-inbound] Unmatched inbound number: ${fromNumber}`)
   }
 
-  const replyText = buildAutoReplyText(lead)
+  const { thread, duplicate } = await recordInboundToInbox(supabase, {
+    phoneNumber: fromNumber,
+    body,
+    messageSid: payload.messageSid,
+    mediaUrl: payload.mediaUrl,
+    lead,
+  })
+
+  if (duplicate) {
+    return ''
+  }
 
   if (lead) {
     await recordLeadActivity(supabase, {
@@ -220,7 +222,13 @@ export async function processInboundWhatsApp(payload: InboundWhatsAppPayload): P
     fromNumber,
   })
 
-  await sendWhatsAppReply(payload.from, replyText)
+  if (!shouldAutoReply(thread.status)) {
+    return ''
+  }
+
+  const replyText = buildAutoReplyText(lead)
+  const outboundSid = await sendWhatsAppReply(payload.from, replyText)
+  await recordBotReplyToInbox(supabase, thread.id, replyText, outboundSid)
 
   return replyText
 }
@@ -259,12 +267,14 @@ export async function handleWhatsAppInboundWebhook(req: Request): Promise<{ twim
   const from = String(req.body?.From || '')
   const body = String(req.body?.Body || '')
   const messageSid = String(req.body?.MessageSid || '')
+  const numMedia = Number(req.body?.NumMedia || 0)
+  const mediaUrl = numMedia > 0 ? String(req.body?.MediaUrl0 || '') || null : null
 
   if (!from) {
     return { twiml: '<?xml version="1.0" encoding="UTF-8"?><Response></Response>', status: 400 }
   }
 
-  const replyText = await processInboundWhatsApp({ from, body, messageSid })
+  const replyText = await processInboundWhatsApp({ from, body, messageSid, mediaUrl })
 
   // TwiML fallback if REST send is unavailable (sandbox / missing credentials)
   const client = getTwilioClient()

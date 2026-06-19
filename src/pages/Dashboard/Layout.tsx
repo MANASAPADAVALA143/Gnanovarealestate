@@ -24,6 +24,7 @@ import {
   ListTodo,
   Handshake,
   Banknote,
+  MessageCircle,
 } from 'lucide-react'
 
 export default function DashboardLayout() {
@@ -43,6 +44,7 @@ export default function DashboardLayout() {
     { name: 'Deals', href: '/dashboard/deals', icon: Handshake },
     { name: 'Commissions', href: '/dashboard/commissions', icon: Banknote },
     { name: 'Tasks', href: '/dashboard/tasks', icon: ListTodo },
+    { name: 'Inbox', href: '/dashboard/inbox', icon: MessageCircle },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },
     { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },

@@ -63,6 +63,14 @@ import {
   commissionsSummaryHandler,
   bulkSubmitCommissionsHandler,
 } from './server/lib/commission-api.ts'
+import {
+  listThreadsHandler,
+  getThreadHandler,
+  assignThreadHandler,
+  replyThreadHandler,
+  addThreadNoteHandler,
+  closeThreadHandler,
+} from './server/lib/whatsapp-inbox.ts'
 
 const app = express()
 app.use(cors())
@@ -855,6 +863,64 @@ app.patch('/api/deals/:id', async (req, res) => {
     await updateDealHandler(getSupabaseServerClient(), req, res)
   } catch (error) {
     console.error('Update deal error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+// ========================================
+// WHATSAPP INBOX
+// ========================================
+
+app.get('/api/whatsapp/threads', async (req, res) => {
+  try {
+    await listThreadsHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('List WhatsApp threads error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.get('/api/whatsapp/threads/:id', async (req, res) => {
+  try {
+    await getThreadHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Get WhatsApp thread error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/whatsapp/threads/:id/assign', async (req, res) => {
+  try {
+    await assignThreadHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Assign WhatsApp thread error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/whatsapp/threads/:id/reply', async (req, res) => {
+  try {
+    await replyThreadHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Reply WhatsApp thread error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/whatsapp/threads/:id/notes', async (req, res) => {
+  try {
+    await addThreadNoteHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('WhatsApp thread note error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/whatsapp/threads/:id/close', async (req, res) => {
+  try {
+    await closeThreadHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Close WhatsApp thread error:', error)
     res.status(500).json({ error: error?.message || 'Internal server error' })
   }
 })

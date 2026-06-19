@@ -23,6 +23,7 @@ import PipelinePage from './src/pages/Dashboard/Pipeline'
 import TasksPage from './src/pages/Dashboard/Tasks'
 import DealsPage from './src/pages/Dashboard/Deals'
 import CommissionsPage from './src/pages/Dashboard/Commissions'
+import InboxPage from './src/pages/Dashboard/Inbox'
 import VoiceCallCenter from './pages/VoiceCallCenter'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -65,6 +66,7 @@ function App() {
             <Route path="pipeline" element={<PipelinePage />} />
             <Route path="deals" element={<DealsPage />} />
             <Route path="commissions" element={<CommissionsPage />} />
+            <Route path="inbox" element={<InboxPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="calls" element={<CallsPage />} />
             <Route path="properties" element={<PropertiesManagementPage />} />
