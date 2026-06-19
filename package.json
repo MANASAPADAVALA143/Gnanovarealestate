@@ -24,6 +24,7 @@
     "test-property-search": "node scripts/test-property-search.js",
     "verify": "tsx scripts/verify-all.ts",
     "verify-crm": "tsx scripts/verify-crm.ts",
+    "verify-deals": "tsx scripts/verify-deals-commissions.ts",
     "verify-whatsapp-inbound": "tsx scripts/verify-whatsapp-inbound.ts",
     "check-servers": "tsx scripts/check-servers.ts",
     "validate-env": "tsx scripts/validate-env.ts"

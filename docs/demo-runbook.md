@@ -104,6 +104,7 @@ DELETE FROM leads WHERE name = 'Ahmed Al Mansouri';
 - Lead not appearing → check Supabase connection in .env.local
 - Pipeline not updating → run supabase db push, 
   confirm migration 018 is applied
+- Deals/commissions errors → run migrations 019 and 020 in Supabase SQL Editor, then `npm run verify-deals`
 
 ---
 

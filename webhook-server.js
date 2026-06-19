@@ -50,6 +50,19 @@ import openHouseRouter from './server/routes/open-house-routes.ts'
 import { runOpenHouseScheduler } from './server/lib/open-house-scheduler.ts'
 import { runNudgeScheduler } from './server/lib/nudge-scheduler.ts'
 import { handleWhatsAppInboundWebhook } from './server/lib/whatsapp-inbound.ts'
+import {
+  createDealHandler,
+  listDealsHandler,
+  getDealHandler,
+  updateDealHandler,
+  dealsSummaryHandler,
+} from './server/lib/deals-api.ts'
+import {
+  updateCommissionHandler,
+  listCommissionsHandler,
+  commissionsSummaryHandler,
+  bulkSubmitCommissionsHandler,
+} from './server/lib/commission-api.ts'
 
 const app = express()
 app.use(cors())
@@ -756,6 +769,95 @@ app.post('/api/listing-writer/generate', generateListing)
 
 // Parse property document with AI
 app.post('/api/listing-writer/parse-document', uploadMiddleware, parseDocument)
+
+// ========================================
+// COMMISSIONS MODULE (register before /api/deals/:id)
+// ========================================
+
+app.get('/api/commissions/summary', async (req, res) => {
+  try {
+    await commissionsSummaryHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Commissions summary error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.get('/api/commissions', async (req, res) => {
+  try {
+    await listCommissionsHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('List commissions error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/commissions/bulk-submit', async (req, res) => {
+  try {
+    await bulkSubmitCommissionsHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Bulk submit commissions error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.patch('/api/deals/:id/commission', async (req, res) => {
+  try {
+    await updateCommissionHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Update commission error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+// ========================================
+// DEALS MODULE
+// ========================================
+
+app.get('/api/deals/summary', async (req, res) => {
+  try {
+    await dealsSummaryHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Deals summary error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.get('/api/deals', async (req, res) => {
+  try {
+    await listDealsHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('List deals error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/deals', async (req, res) => {
+  try {
+    await createDealHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Create deal error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.get('/api/deals/:id', async (req, res) => {
+  try {
+    await getDealHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Get deal error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.patch('/api/deals/:id', async (req, res) => {
+  try {
+    await updateDealHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Update deal error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
 
 // Twilio inbound WhatsApp (urlencoded body — not JSON)
 app.post(

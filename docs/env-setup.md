@@ -24,7 +24,7 @@ Where to get them:
 
 Migration step:
 - Open SQL Editor in Supabase dashboard
-- Run all files in supabase/migrations/ in order (001 to 018)
+- Run all files in supabase/migrations/ in order (001 to 020)
 
 ---
 

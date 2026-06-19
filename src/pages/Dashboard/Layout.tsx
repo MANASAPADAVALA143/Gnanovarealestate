@@ -22,6 +22,8 @@ import {
   DoorOpen,
   Kanban,
   ListTodo,
+  Handshake,
+  Banknote,
 } from 'lucide-react'
 
 export default function DashboardLayout() {
@@ -38,6 +40,8 @@ export default function DashboardLayout() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Leads', href: '/dashboard/leads', icon: Users },
     { name: 'Pipeline', href: '/dashboard/pipeline', icon: Kanban },
+    { name: 'Deals', href: '/dashboard/deals', icon: Handshake },
+    { name: 'Commissions', href: '/dashboard/commissions', icon: Banknote },
     { name: 'Tasks', href: '/dashboard/tasks', icon: ListTodo },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },

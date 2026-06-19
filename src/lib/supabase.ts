@@ -107,6 +107,7 @@ export type Agent = {
   location: string | null
   subscription_tier: string
   subscription_status: string
+  is_manager?: boolean
   created_at: string
 }
 

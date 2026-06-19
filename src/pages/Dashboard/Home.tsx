@@ -4,6 +4,8 @@ import { supabase, type Call } from '../../lib/supabase'
 import { Phone, Users, Calendar, Clock, TrendingUp, TrendingDown, Play } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import OverdueFollowUpsWidget from '../../components/crm/OverdueFollowUpsWidget'
+import DealsSummaryWidget from '../../components/crm/DealsSummaryWidget'
+import CommissionSummaryWidget from '../../components/crm/CommissionSummaryWidget'
 
 type DashboardStats = {
   calls_today: number
@@ -230,6 +232,10 @@ export default function DashboardHome() {
       </div>
 
       <OverdueFollowUpsWidget />
+
+      <DealsSummaryWidget />
+
+      <CommissionSummaryWidget />
 
       {/* Recent Calls */}
       <div className="bg-white rounded-xl border border-slate-200">
