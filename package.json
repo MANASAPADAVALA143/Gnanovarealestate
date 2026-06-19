@@ -27,6 +27,7 @@
     "verify-deals": "tsx scripts/verify-deals-commissions.ts",
     "verify-whatsapp-inbound": "tsx scripts/verify-whatsapp-inbound.ts",
     "verify-whatsapp-inbox": "tsx scripts/verify-whatsapp-inbox.ts",
+    "verify-viewings": "tsx scripts/verify-viewings.ts",
     "check-servers": "tsx scripts/check-servers.ts",
     "validate-env": "tsx scripts/validate-env.ts"
   },

@@ -71,6 +71,12 @@ import {
   addThreadNoteHandler,
   closeThreadHandler,
 } from './server/lib/whatsapp-inbox.ts'
+import {
+  createViewingHandler,
+  listViewingsHandler,
+  upcomingViewingsHandler,
+  updateViewingHandler,
+} from './server/lib/viewings-api.ts'
 
 const app = express()
 app.use(cors())
@@ -921,6 +927,46 @@ app.post('/api/whatsapp/threads/:id/close', async (req, res) => {
     await closeThreadHandler(getSupabaseServerClient(), req, res)
   } catch (error) {
     console.error('Close WhatsApp thread error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+// ========================================
+// VIEWINGS MODULE (register /upcoming before /:id)
+// ========================================
+
+app.get('/api/viewings/upcoming', async (req, res) => {
+  try {
+    await upcomingViewingsHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Upcoming viewings error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.get('/api/viewings', async (req, res) => {
+  try {
+    await listViewingsHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('List viewings error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/viewings', async (req, res) => {
+  try {
+    await createViewingHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Create viewing error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.patch('/api/viewings/:id', async (req, res) => {
+  try {
+    await updateViewingHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Update viewing error:', error)
     res.status(500).json({ error: error?.message || 'Internal server error' })
   }
 })
