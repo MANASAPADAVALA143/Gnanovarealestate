@@ -16,6 +16,7 @@ import {
   type CommissionStatus,
 } from '../../lib/commissions'
 import DealTimeline from '../../components/crm/DealTimeline'
+import { ensureBrokerInvoice } from '../../lib/broker-invoices'
 import { ChevronDown, ChevronRight, Filter, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -55,7 +56,7 @@ export default function CommissionsPage() {
   }
 
   async function loadAgents() {
-    const { data } = await supabase.from('agents').select('id, full_name').order('full_name')
+    const { data } = await supabase.from('agents_directory').select('id, full_name').order('full_name')
     setAgents((data as AgentPick[]) || [])
   }
 
@@ -111,6 +112,15 @@ export default function CommissionsPage() {
       setRows((prev) => prev.map((r) => (r.id === deal.id ? { ...r, ...deal } : r)))
       if (warnings?.length) {
         alert(warnings.join('\n'))
+      }
+      // Additive: when commission becomes payable (approved), ensure broker invoice exists.
+      // Does not change commission transition rules.
+      if (next === 'approved') {
+        try {
+          await ensureBrokerInvoice(deal.id)
+        } catch (invErr) {
+          console.warn('Broker invoice create skipped:', invErr)
+        }
       }
     } catch (err) {
       const e = err as Error & { can_override?: boolean }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 import {
   initImportJob,
@@ -28,9 +29,12 @@ type LeadUpsert = {
   location: string | null
   status: string
   source: string
+  agent_id: string
   created_at: string
   updated_at: string
 }
+
+type LeadRowDraft = Omit<LeadUpsert, 'agent_id'>
 
 function isUuid(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -45,9 +49,9 @@ function buildRows(
   phoneCol: string | null,
   locationCol: string | null,
   emailCol: string | null
-): { leads: LeadUpsert[]; fileDuplicates: number; rowErrors: number; errorSamples: string[] } {
+): { leads: LeadRowDraft[]; fileDuplicates: number; rowErrors: number; errorSamples: string[] } {
   const seen = new Set<string>()
-  const leads: LeadUpsert[] = []
+  const leads: LeadRowDraft[] = []
   let fileDuplicates = 0
   let rowErrors = 0
   const errorSamples: string[] = []
@@ -151,6 +155,9 @@ async function upsertBatches(jobId: string, leads: LeadUpsert[], baseErrors: num
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const form = await req.formData()
     const jobId = String(form.get('jobId') || '')
     const file = form.get('file')
@@ -176,7 +183,7 @@ export async function POST(req: NextRequest) {
 
     const { headers, rows } = parseSpreadsheet(buffer, filename)
 
-    const { leads, fileDuplicates, rowErrors, errorSamples } = buildRows(
+    const built = buildRows(
       rows,
       headers,
       nameColumn || null,
@@ -184,6 +191,11 @@ export async function POST(req: NextRequest) {
       locationColumn || null,
       emailColumn || null
     )
+    const leads = built.leads.map((lead) => ({
+      ...lead,
+      agent_id: auth.agentId,
+    }))
+    const { fileDuplicates, rowErrors, errorSamples } = built
 
     initImportJob(jobId, leads.length)
     patchImportJob(jobId, {

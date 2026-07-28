@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 import {
   countMatchingLeads,
@@ -29,12 +30,15 @@ function parseFilters(body: unknown): CampaignFilters {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const body = await req.json()
     const filters = parseFilters(body)
     const supabase = getSupabaseServiceClient()
     const [count, leads] = await Promise.all([
-      countMatchingLeads(supabase, filters),
-      previewMatchingLeads(supabase, filters, 50),
+      countMatchingLeads(supabase, filters, auth.agentId),
+      previewMatchingLeads(supabase, filters, 50, auth.agentId),
     ])
     return NextResponse.json({ count, leads })
   } catch (e: unknown) {

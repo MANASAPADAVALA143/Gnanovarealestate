@@ -12,8 +12,12 @@ import {
   Calendar,
   ChevronRight,
   Radio,
+  Link2,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { format, parseISO, addHours } from 'date-fns'
+import { ConsentCheckbox, useConsentGate } from '../../components/ConsentCheckbox'
 
 type OhEvent = {
   id: string
@@ -107,6 +111,15 @@ export default function OpenHousePage() {
   const [checkIn, setCheckIn] = useState({ name: '', phone: '', email: '' })
   const [checkInErr, setCheckInErr] = useState<string | null>(null)
   const [triggerBusy, setTriggerBusy] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  const {
+    consentGiven: checkInConsent,
+    setConsentGiven: setCheckInConsent,
+    showConsentError: showCheckInConsentError,
+    checkConsent: checkCheckInConsent,
+    logConsent: logCheckInConsent,
+  } = useConsentGate(supabase)
 
   const loadAll = useCallback(async () => {
     if (!agent) return
@@ -251,20 +264,50 @@ export default function OpenHousePage() {
       setCheckInErr('Name and phone are required')
       return
     }
+    if (!checkCheckInConsent()) {
+      setCheckInErr(null)
+      return
+    }
     setCheckInErr(null)
-    const { error: cErr } = await supabase.from('open_house_attendees').insert({
-      open_house_id: drawerEvent.id,
-      name: checkIn.name.trim(),
-      phone: checkIn.phone.trim(),
-      email: checkIn.email.trim() || null,
-    } as never)
+    const { data: inserted, error: cErr } = await supabase
+      .from('open_house_attendees')
+      .insert({
+        open_house_id: drawerEvent.id,
+        name: checkIn.name.trim(),
+        phone: checkIn.phone.trim(),
+        email: checkIn.email.trim() || null,
+      } as never)
+      .select('id')
+      .single()
     if (cErr) {
       setCheckInErr(cErr.message.includes('duplicate') ? 'This phone is already checked in for this event.' : cErr.message)
       return
     }
+    await logCheckInConsent({
+      lead_id: inserted?.id,
+      phone: checkIn.phone.trim(),
+      email: checkIn.email.trim() || undefined,
+      context: 'openhouse',
+    })
     setCheckIn({ name: '', phone: '', email: '' })
+    setCheckInConsent(false)
     await loadAttendees(drawerEvent.id)
     await loadAll()
+  }
+
+  const publicCheckInUrl = drawerEvent
+    ? `${window.location.origin}/open-house/${drawerEvent.id}/check-in`
+    : ''
+
+  const copyCheckInLink = async () => {
+    if (!publicCheckInUrl) return
+    try {
+      await navigator.clipboard.writeText(publicCheckInUrl)
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      setCheckInErr('Could not copy link — copy it manually from the field below.')
+    }
   }
 
   const triggerFollowups = async (eventId: string) => {
@@ -578,6 +621,40 @@ export default function OpenHousePage() {
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               <div>
                 <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                  <Link2 className="w-4 h-4" />
+                  Guest check-in link
+                </h3>
+                <p className="text-xs text-slate-500 mb-2">
+                  Share this link or QR-friendly URL so visitors can check in on their phones.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-700 bg-slate-50"
+                    value={publicCheckInUrl}
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <button
+                    type="button"
+                    onClick={copyCheckInLink}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    {linkCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                    {linkCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <a
+                  href={publicCheckInUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline"
+                >
+                  Open public check-in page →
+                </a>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   Check in
                 </h3>
@@ -599,6 +676,12 @@ export default function OpenHousePage() {
                     placeholder="Email (optional)"
                     value={checkIn.email}
                     onChange={(e) => setCheckIn((c) => ({ ...c, email: e.target.value }))}
+                  />
+                  <ConsentCheckbox
+                    checked={checkInConsent}
+                    onChange={setCheckInConsent}
+                    showError={showCheckInConsentError}
+                    context="openhouse"
                   />
                   {checkInErr && <p className="text-xs text-red-600">{checkInErr}</p>}
                   <button

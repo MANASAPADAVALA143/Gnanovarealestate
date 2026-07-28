@@ -1,17 +1,25 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { applyAgentClaimPoolFilter } from '../../../../lib/campaign-query'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 
 export const runtime = 'nodejs'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const supabase = getSupabaseServiceClient()
-    const { data, error } = await supabase
+    let q = supabase
       .from('leads')
       .select('location')
       .not('location', 'is', null)
       .neq('location', '')
       .limit(5000)
+    q = applyAgentClaimPoolFilter(q, auth.agentId)
+
+    const { data, error } = await q
 
     if (error) throw new Error(error.message)
 

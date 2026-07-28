@@ -25,7 +25,9 @@ import {
   Handshake,
   Banknote,
   MessageCircle,
+  FileText,
 } from 'lucide-react'
+import { featureFlags } from '../../lib/featureFlags'
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
@@ -37,12 +39,15 @@ export default function DashboardLayout() {
     (typeof import.meta !== 'undefined' && import.meta.env?.VITE_NEXT_APP_URL?.replace(/\/$/, '')) ||
     'http://localhost:3002'
 
+  const isManager = Boolean(agent?.is_manager) || dashboardPreview
+
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Leads', href: '/dashboard/leads', icon: Users },
     { name: 'Pipeline', href: '/dashboard/pipeline', icon: Kanban },
     { name: 'Deals', href: '/dashboard/deals', icon: Handshake },
     { name: 'Commissions', href: '/dashboard/commissions', icon: Banknote },
+    { name: 'Broker Invoices', href: '/dashboard/broker-invoices', icon: FileText },
     { name: 'Tasks', href: '/dashboard/tasks', icon: ListTodo },
     { name: 'Inbox', href: '/dashboard/inbox', icon: MessageCircle },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
@@ -51,7 +56,10 @@ export default function DashboardLayout() {
     { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
     { name: 'Open House', href: '/dashboard/open-house', icon: DoorOpen },
-    { name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon },
+    // Manager-only: integration_settings RLS is is_deal_manager() — hide from agents
+    ...(isManager
+      ? [{ name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon }]
+      : []),
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
@@ -169,25 +177,35 @@ export default function DashboardLayout() {
             <Menu className="w-6 h-6" />
           </button>
 
-          {/* Search */}
-          <div className="flex-1 max-w-lg mx-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search leads, calls, properties..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+          {/* TODO(stub): backend not implemented — no global search API across leads/calls/properties */}
+          {featureFlags.globalSearch ? (
+            <div className="flex-1 max-w-lg mx-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search leads, calls, properties..."
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex-1 mx-4" />
+          )}
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
-            {/* Notifications */}
-            <button className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            {/* TODO(stub): backend not implemented — no notifications feed / realtime alert channel */}
+            {featureFlags.notificationsBell && (
+              <button
+                type="button"
+                className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+                aria-label="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+              </button>
+            )}
 
             {/* Agent avatar (mobile) */}
             <div className="lg:hidden w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">

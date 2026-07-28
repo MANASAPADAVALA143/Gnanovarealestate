@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import PropertyCard, { PropertyCardSkeleton } from '../../../components/properties/PropertyCard'
+import { apiFetch } from '../../../lib/api-fetch'
 import type { Property, PropertySearchFilters, PropertyType } from '../../../types/property'
 
 type CachedEntry = {
@@ -87,7 +88,7 @@ export default function PropertiesPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch('/api/properties/search', {
+        const res = await apiFetch('/api/properties/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(filtersForRequest),

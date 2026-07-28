@@ -126,12 +126,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: { full_name: fullName, phone, location },
+        },
       })
 
       if (authError) throw authError
       if (!authData.user) throw new Error('No user returned from signup')
 
-      // 2. Create agent record
+      // 2. RLS agents_self_insert requires authenticated JWT (id = auth.uid())
+      if (authData.session) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: authData.session.access_token,
+          refresh_token: authData.session.refresh_token,
+        })
+        if (sessionError) throw sessionError
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        if (signInError) {
+          throw new Error(
+            'Account created. Please confirm your email, then sign in to finish setup.'
+          )
+        }
+      }
+
+      // 3. Create agent record (now runs as authenticated)
       const { error: agentError } = await supabase
         .from('agents')
         .insert({
@@ -146,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (agentError) throw agentError
 
-      // 3. Fetch the created agent
+      // 4. Fetch the created agent
       await fetchAgent(authData.user.id)
     } catch (error: any) {
       throw new Error(error.message || 'Error signing up')

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireVapiSecret } from '../../../../lib/require-vapi-secret'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 import { inferLeadTypeAndUrgencyFromTranscript } from '../../../../lib/lead-transcript-signals'
 import { sendAgentSMSAlert } from '../../../../server/lib/sms-alert'
@@ -68,6 +69,9 @@ function parseJsonFromClaudeText(text: string): Record<string, unknown> {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireVapiSecret(req)
+  if (auth !== true) return auth
+
   let body: Record<string, unknown>
   try {
     body = (await req.json()) as Record<string, unknown>

@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { isAgentAuth, requireAgent } from '../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../lib/supabase-service'
 
 export const runtime = 'nodejs'
@@ -17,14 +18,18 @@ export type CampaignListRow = {
   scored_count: number
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const supabase = getSupabaseServiceClient()
     const { data: campaigns, error } = await supabase
       .from('outbound_campaigns')
       .select(
         'id,name,status,created_at,started_at,leads_count,total_leads,calls_made,calls_completed,calls_connected'
       )
+      .eq('agent_id', auth.agentId)
       .order('created_at', { ascending: false })
 
     if (error) throw new Error(error.message)

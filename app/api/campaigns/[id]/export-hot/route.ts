@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAgentAuth, requireAgent } from '../../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../../lib/supabase-service'
 
 export const runtime = 'nodejs'
@@ -15,10 +16,25 @@ function toCsv(rows: { name: string; phone: string; email: string; location: str
   return header + body
 }
 
-export async function GET(_req: NextRequest, ctx: { params: { id: string } }) {
+export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const id = ctx.params.id
     const supabase = getSupabaseServiceClient()
+
+    const { data: campaign, error: campErr } = await supabase
+      .from('outbound_campaigns')
+      .select('id')
+      .eq('id', id)
+      .eq('agent_id', auth.agentId)
+      .maybeSingle()
+
+    if (campErr) throw new Error(campErr.message)
+    if (!campaign) {
+      return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+    }
 
     const { data: clRows, error } = await supabase
       .from('campaign_leads')

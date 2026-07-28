@@ -6,6 +6,7 @@ import { formatDistanceToNow } from 'date-fns'
 import OverdueFollowUpsWidget from '../../components/crm/OverdueFollowUpsWidget'
 import DealsSummaryWidget from '../../components/crm/DealsSummaryWidget'
 import CommissionSummaryWidget from '../../components/crm/CommissionSummaryWidget'
+import BrokerPaymentStatusCard from '../../components/crm/BrokerPaymentStatusCard'
 
 type DashboardStats = {
   calls_today: number
@@ -234,6 +235,8 @@ export default function DashboardHome() {
       <OverdueFollowUpsWidget />
 
       <DealsSummaryWidget />
+
+      <BrokerPaymentStatusCard />
 
       <CommissionSummaryWidget />
 

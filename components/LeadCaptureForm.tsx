@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ConsentCheckbox, useConsentGate } from '@/src/components/ConsentCheckbox'
+import { supabase } from '@/src/lib/supabase'
 
 export default function LeadCaptureForm() {
   const [formData, setFormData] = useState({
@@ -11,10 +13,15 @@ export default function LeadCaptureForm() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
 
+  const { consentGiven, setConsentGiven, showConsentError, checkConsent, logConsent } =
+    useConsentGate(supabase)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setResult(null)
+    if (!checkConsent()) return
+
+    setLoading(true)
 
     try {
       const response = await fetch('/api/leads/create', {
@@ -23,6 +30,8 @@ export default function LeadCaptureForm() {
         body: JSON.stringify({
           ...formData,
           source: 'website',
+          consent_given: true,
+          consent_timestamp: new Date().toISOString(),
         }),
       })
 
@@ -43,11 +52,19 @@ export default function LeadCaptureForm() {
 
       const data = await response.json()
 
+      await logConsent({
+        lead_id: data.leadId,
+        email: formData.email,
+        phone: formData.phone,
+        context: 'lead',
+      })
+
       setResult({
         type: 'success',
         message: data.message || 'Lead captured. AI will call within 2 minutes.',
       })
       setFormData({ name: '', email: '', phone: '', location: '', timeline: 'Immediately' })
+      setConsentGiven(false)
     } catch (error: any) {
       console.error('Network error:', error)
       let errorMessage = 'Network error. Please try again.'
@@ -143,6 +160,13 @@ export default function LeadCaptureForm() {
             <option>6+ months</option>
           </select>
         </div>
+
+        <ConsentCheckbox
+          checked={consentGiven}
+          onChange={setConsentGiven}
+          showError={showConsentError}
+          context="lead"
+        />
 
         <button
           type="submit"

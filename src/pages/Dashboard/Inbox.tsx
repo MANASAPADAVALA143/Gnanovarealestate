@@ -104,7 +104,7 @@ export default function InboxPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const loadAgents = useCallback(async () => {
-    const { data } = await supabase.from('agents').select('id, full_name').order('full_name')
+    const { data } = await supabase.from('agents_directory').select('id, full_name').order('full_name')
     setAgents((data as AgentPick[]) || [])
   }, [])
 

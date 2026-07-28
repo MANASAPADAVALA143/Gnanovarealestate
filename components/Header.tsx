@@ -2,6 +2,7 @@ import { Menu, X, Phone } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../src/contexts/AuthContext';
+import { featureFlags } from '../src/lib/featureFlags';
 
 interface HeaderProps {
   onBookDemo: () => void;
@@ -26,13 +27,16 @@ export default function Header({ onBookDemo, onNavigateToCallCenter }: HeaderPro
             <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition">Pricing</a>
             <a href="#results" className="text-gray-600 hover:text-gray-900 transition">Results</a>
             <a href="#faq" className="text-gray-600 hover:text-gray-900 transition">FAQ</a>
-            <Link
-              to="/call-center"
-              className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition flex items-center space-x-2"
-            >
-              <Phone size={18} />
-              <span>Call Center</span>
-            </Link>
+            {/* TODO(stub): live call-center uses mock data — gated until realtime VAPI feed exists */}
+            {featureFlags.liveCallCenter && (
+              <Link
+                to="/call-center"
+                className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition flex items-center space-x-2"
+              >
+                <Phone size={18} />
+                <span>Call Center</span>
+              </Link>
+            )}
             {user ? (
               <Link
                 to="/dashboard"
@@ -73,13 +77,15 @@ export default function Header({ onBookDemo, onNavigateToCallCenter }: HeaderPro
               <a href="#pricing" className="text-gray-600 hover:text-gray-900">Pricing</a>
               <a href="#results" className="text-gray-600 hover:text-gray-900">Results</a>
               <a href="#faq" className="text-gray-600 hover:text-gray-900">FAQ</a>
-              <Link
-                to="/call-center"
-                className="px-4 py-2 bg-gray-900 text-white rounded-lg flex items-center space-x-2"
-              >
-                <Phone size={18} />
-                <span>Call Center</span>
-              </Link>
+              {featureFlags.liveCallCenter && (
+                <Link
+                  to="/call-center"
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg flex items-center space-x-2"
+                >
+                  <Phone size={18} />
+                  <span>Call Center</span>
+                </Link>
+              )}
               {user ? (
                 <Link
                   to="/dashboard"

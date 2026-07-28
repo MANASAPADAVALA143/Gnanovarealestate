@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 
 // Simple in-memory cache with TTL
 type CacheEntry<T> = {
@@ -52,15 +53,15 @@ function getSupabaseServerClient(): SupabaseClient {
   return createClient(url, serviceKey)
 }
 
-async function getTodayStats(supabase: SupabaseClient) {
+async function getTodayStats(supabase: SupabaseClient, agentId: string) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayStart = today.toISOString()
 
-  // Calls today
   const { data: callsToday, error: callsError } = await supabase
     .from('calls')
     .select('id, ai_score, lead_status, appointment_booked')
+    .eq('agent_id', agentId)
     .gte('created_at', todayStart)
 
   if (callsError) {
@@ -82,16 +83,16 @@ async function getTodayStats(supabase: SupabaseClient) {
   }
 }
 
-async function getThisWeekStats(supabase: SupabaseClient) {
+async function getThisWeekStats(supabase: SupabaseClient, agentId: string) {
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
   weekAgo.setHours(0, 0, 0, 0)
   const weekStart = weekAgo.toISOString()
 
-  // Calls this week
   const { data: callsWeek, error: callsError } = await supabase
     .from('calls')
     .select('id, lead_status, appointment_booked')
+    .eq('agent_id', agentId)
     .gte('created_at', weekStart)
 
   if (callsError) {
@@ -102,7 +103,6 @@ async function getThisWeekStats(supabase: SupabaseClient) {
   const hotLeads = callsWeek?.filter((c) => c.lead_status === 'hot').length ?? 0
   const appointmentsBooked = callsWeek?.filter((c) => c.appointment_booked).length ?? 0
 
-  // Conversion rate: appointments / calls
   const conversionRate = callsCount > 0 ? Number((appointmentsBooked / callsCount).toFixed(2)) : 0
 
   return {
@@ -114,27 +114,23 @@ async function getThisWeekStats(supabase: SupabaseClient) {
 }
 
 async function getTopProperties(supabase: SupabaseClient) {
-  // Get properties with most recommendations/bookings
-  // This is a simplified version - you might want to track property views separately
+  // Global property ranking (shared catalog) — auth still required at route level
 
-  // Get property recommendations count
   const { data: recommendations, error: recError } = await supabase
     .from('property_recommendations')
     .select('property_id')
-    .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // last 30 days
+    .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 
   if (recError) {
     console.error('Error fetching property recommendations:', recError)
   }
 
-  // Count recommendations per property
   const propertyCounts = new Map<string, number>()
   recommendations?.forEach((rec) => {
     const count = propertyCounts.get(rec.property_id) ?? 0
     propertyCounts.set(rec.property_id, count + 1)
   })
 
-  // Get bookings per property
   const { data: bookings, error: bookingsError } = await supabase
     .from('bookings')
     .select('property_id')
@@ -149,7 +145,6 @@ async function getTopProperties(supabase: SupabaseClient) {
     propertyCounts.set(booking.property_id, count + 1)
   })
 
-  // Get top 5 property IDs
   const topPropertyIds = Array.from(propertyCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
@@ -159,7 +154,6 @@ async function getTopProperties(supabase: SupabaseClient) {
     return []
   }
 
-  // Fetch property details
   const { data: properties, error: propsError } = await supabase
     .from('properties')
     .select('id, address, city, state, price, bedrooms, bathrooms, photos')
@@ -170,7 +164,6 @@ async function getTopProperties(supabase: SupabaseClient) {
     return []
   }
 
-  // Sort by inquiry count
   return properties
     ?.map((prop) => ({
       ...prop,
@@ -179,7 +172,7 @@ async function getTopProperties(supabase: SupabaseClient) {
     .sort((a, b) => b.inquiryCount - a.inquiryCount) ?? []
 }
 
-async function getRecentActivity(supabase: SupabaseClient) {
+async function getRecentActivity(supabase: SupabaseClient, agentId: string) {
   const activities: Array<{
     type: 'call' | 'booking' | 'search'
     timestamp: string
@@ -187,10 +180,10 @@ async function getRecentActivity(supabase: SupabaseClient) {
     metadata?: any
   }> = []
 
-  // Recent calls (last 10)
   const { data: recentCalls, error: callsError } = await supabase
     .from('calls')
     .select('id, created_at, lead_name, lead_phone, lead_status')
+    .eq('agent_id', agentId)
     .order('created_at', { ascending: false })
     .limit(10)
 
@@ -208,15 +201,14 @@ async function getRecentActivity(supabase: SupabaseClient) {
     })
   }
 
-  // Recent bookings (last 10)
   const { data: recentBookings, error: bookingsError } = await supabase
     .from('bookings')
     .select('id, created_at, scheduled_date, scheduled_time, property_id')
+    .eq('agent_id', agentId)
     .order('created_at', { ascending: false })
     .limit(10)
 
   if (!bookingsError && recentBookings) {
-    // Fetch property details for bookings
     const propertyIds = recentBookings.map((b) => b.property_id)
     const { data: properties } = await supabase
       .from('properties')
@@ -240,7 +232,6 @@ async function getRecentActivity(supabase: SupabaseClient) {
     })
   }
 
-  // Sort all activities by timestamp (most recent first) and take top 10
   return activities
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 10)
@@ -248,8 +239,11 @@ async function getRecentActivity(supabase: SupabaseClient) {
 
 export async function GET(req: NextRequest) {
   try {
-    // Check cache
-    const cacheKey = 'analytics:stats'
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
+    const agentId = auth.agentId
+    const cacheKey = `analytics:stats:${agentId}`
     const cached = getCached<any>(cacheKey)
     if (cached) {
       return NextResponse.json(cached, {
@@ -261,12 +255,11 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseServerClient()
 
-    // Fetch all stats in parallel
     const [today, thisWeek, topProperties, recentActivity] = await Promise.all([
-      getTodayStats(supabase),
-      getThisWeekStats(supabase),
+      getTodayStats(supabase, agentId),
+      getThisWeekStats(supabase, agentId),
       getTopProperties(supabase),
-      getRecentActivity(supabase),
+      getRecentActivity(supabase, agentId),
     ])
 
     const response = {
@@ -276,7 +269,6 @@ export async function GET(req: NextRequest) {
       recentActivity,
     }
 
-    // Cache the response
     setCached(cacheKey, response)
 
     return NextResponse.json(response, {

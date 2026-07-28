@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 import {
+  applyAgentClaimPoolFilter,
   fetchMatchingLeadIds,
   type CampaignFilters,
   type CampaignScoreFilter,
@@ -119,12 +121,27 @@ async function startFirstVapiCall(params: {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const body = await req.json()
     const { name, filters, leadIds: bodyLeadIds } = parseBody(body)
     const supabase = getSupabaseServiceClient()
 
     let leadIds =
-      bodyLeadIds.length > 0 ? bodyLeadIds.slice(0, filters.maxContacts) : await fetchMatchingLeadIds(supabase, filters)
+      bodyLeadIds.length > 0
+        ? bodyLeadIds.slice(0, filters.maxContacts)
+        : await fetchMatchingLeadIds(supabase, filters, auth.agentId)
+
+    // If client supplied lead IDs, only allow claim-pool leads for this agent
+    if (bodyLeadIds.length > 0 && leadIds.length > 0) {
+      let ownedQ = supabase.from('leads').select('id').in('id', leadIds)
+      ownedQ = applyAgentClaimPoolFilter(ownedQ, auth.agentId)
+      const { data: owned, error: ownedErr } = await ownedQ
+      if (ownedErr) throw new Error(ownedErr.message)
+      const allowed = new Set((owned || []).map((r) => (r as { id: string }).id))
+      leadIds = leadIds.filter((id) => allowed.has(id))
+    }
 
     leadIds = [...new Set(leadIds)]
     if (leadIds.length === 0) {
@@ -136,6 +153,7 @@ export async function POST(req: NextRequest) {
       .from('outbound_campaigns')
       .insert({
         name,
+        agent_id: auth.agentId,
         status: 'running',
         started_at: now,
         updated_at: now,

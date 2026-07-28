@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { apiFetch } from '../../../../../lib/api-fetch'
 
 type Campaign = {
   id: string
@@ -48,7 +49,7 @@ export default function CampaignDetailPage() {
   const load = useCallback(async () => {
     if (!id) return
     try {
-      const res = await fetch(`/api/campaigns/${id}`)
+      const res = await apiFetch(`/api/campaigns/${id}`)
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'Failed to load')
       setCampaign(j.campaign as Campaign)
@@ -73,7 +74,7 @@ export default function CampaignDetailPage() {
   const pause = async () => {
     setPausing(true)
     try {
-      const res = await fetch(`/api/campaigns/${id}/pause`, { method: 'POST' })
+      const res = await apiFetch(`/api/campaigns/${id}/pause`, { method: 'POST' })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'Pause failed')
       await load()
@@ -85,7 +86,7 @@ export default function CampaignDetailPage() {
   }
 
   const exportHot = async () => {
-    const res = await fetch(`/api/campaigns/${id}/export-hot`)
+    const res = await apiFetch(`/api/campaigns/${id}/export-hot`)
     if (!res.ok) {
       const j = await res.json().catch(() => ({}))
       setError((j as { error?: string }).error || 'Export failed')

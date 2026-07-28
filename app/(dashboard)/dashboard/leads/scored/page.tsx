@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../../../../components/ui/dialog'
+import { apiFetch } from '../../../../../lib/api-fetch'
 
 type TabId = 'all' | 'hot' | 'warm' | 'cold' | 'dead'
 
@@ -115,8 +116,8 @@ export default function ScoredLeadsPage() {
 
   const loadFilters = useCallback(async () => {
     const [locRes, campRes] = await Promise.all([
-      fetch('/api/campaigns/filter-options'),
-      fetch('/api/campaigns'),
+      apiFetch('/api/campaigns/filter-options'),
+      apiFetch('/api/campaigns'),
     ])
     const locJ = await locRes.json().catch(() => ({}))
     const campJ = await campRes.json().catch(() => ({}))
@@ -132,7 +133,7 @@ export default function ScoredLeadsPage() {
 
   const checkRunning = useCallback(async () => {
     try {
-      const res = await fetch('/api/campaigns')
+      const res = await apiFetch('/api/campaigns')
       const j = await res.json()
       if (!res.ok) return false
       const rows = (j.campaigns || []) as { status: string | null }[]
@@ -153,7 +154,7 @@ export default function ScoredLeadsPage() {
       })
       if (location) params.set('location', location)
       if (campaignId) params.set('campaignId', campaignId)
-      const res = await fetch(`/api/leads/scored?${params}`)
+      const res = await apiFetch(`/api/leads/scored?${params}`)
       const j = (await res.json().catch(() => ({}))) as { error?: string; leads?: LeadRow[]; stats?: Stats }
       if (!res.ok) throw new Error(j.error || 'Failed to load scored leads')
       setLeads(j.leads || [])
@@ -219,7 +220,7 @@ export default function ScoredLeadsPage() {
   }
 
   const markCalled = async (leadId: string) => {
-    const res = await fetch('/api/leads/mark-called', {
+    const res = await apiFetch('/api/leads/mark-called', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ leadId }),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import type { Property, PropertySearchResult } from '../../../../types/property'
+import { requireAgentOrVapi } from '../../../../lib/require-vapi-secret'
 
 type RouteParams = {
   params: {
@@ -38,7 +39,10 @@ function getSupabaseServerClient(): SupabaseClient {
   return createClient(url, serviceKey)
 }
 
-export async function GET(_req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, { params }: RouteParams) {
+  const auth = await requireAgentOrVapi(req)
+  if (auth instanceof NextResponse) return auth
+
   const { id } = params
 
   if (!id || typeof id !== 'string') {

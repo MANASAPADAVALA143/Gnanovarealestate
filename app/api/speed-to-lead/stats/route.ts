@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 
 export const runtime = 'nodejs'
@@ -62,21 +63,70 @@ export type SpeedToLeadStatsResponse = {
   chartData: { date: string; avgSeconds: number | null }[]
 }
 
-export async function GET() {
+/** Keep log rows whose lead is in the agent's claim pool (own or unassigned). */
+async function filterLogsByAgentClaimPool<T extends { lead_id?: string | null }>(
+  supabase: ReturnType<typeof getSupabaseServiceClient>,
+  rows: T[],
+  agentId: string
+): Promise<T[]> {
+  const leadIds = [
+    ...new Set(
+      rows
+        .map((r) => r.lead_id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    ),
+  ]
+  if (!leadIds.length) return []
+
+  const { data: leads, error } = await supabase
+    .from('leads')
+    .select('id, agent_id')
+    .in('id', leadIds)
+
+  if (error) throw new Error(error.message)
+
+  const allowed = new Set(
+    (leads || [])
+      .filter((l) => {
+        const aid = (l as { agent_id: string | null }).agent_id
+        return aid == null || aid === agentId
+      })
+      .map((l) => (l as { id: string }).id)
+  )
+
+  return rows.filter((r) => r.lead_id != null && allowed.has(String(r.lead_id)))
+}
+
+export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
+    const agentId = auth.agentId
     const supabase = getSupabaseServiceClient()
     const now = new Date()
     const { start: todayStart, end: todayEnd } = istDayBoundsISO(now)
 
-    const { data: todayRows, error: todayErr } = await supabase
+    const chartDayKeys: string[] = []
+    for (let i = 6; i >= 0; i--) {
+      const t = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+      chartDayKeys.push(formatISTDateKey(t))
+    }
+
+    const { data: todayRowsRaw, error: todayErr } = await supabase
       .from('speed_to_lead_log')
-      .select('source, response_seconds, lead_score, call_status')
+      .select('source, response_seconds, lead_score, call_status, lead_id')
       .gte('received_at', todayStart)
       .lte('received_at', todayEnd)
 
     if (todayErr) throw new Error(todayErr.message)
 
-    const today = todayRows || []
+    const today = await filterLogsByAgentClaimPool(
+      supabase,
+      todayRowsRaw || [],
+      agentId
+    )
+
     const totalToday = today.length
 
     const responseVals = today
@@ -123,11 +173,18 @@ export async function GET() {
         'id, lead_id, source, property_interest, response_seconds, call_duration_seconds, lead_score, score_label, call_status, received_at, leads(name, phone, call_transcript)'
       )
       .order('received_at', { ascending: false })
-      .limit(50)
+      .limit(100)
 
     if (recentErr) throw new Error(recentErr.message)
 
-    const recentLeads = (recentRaw || []).map((row) => {
+    const recentFiltered = await filterLogsByAgentClaimPool(
+      supabase,
+      (recentRaw || []) as Array<{ lead_id?: string | null } & Record<string, unknown>>,
+      agentId
+    )
+    const recentSlice = recentFiltered.slice(0, 50)
+
+    const recentLeads = recentSlice.map((row) => {
       const r = row as Record<string, unknown>
       const leadsRaw = r.leads as Record<string, unknown> | Record<string, unknown>[] | null | undefined
       const leadsOne = Array.isArray(leadsRaw) ? leadsRaw[0] : leadsRaw
@@ -157,26 +214,27 @@ export async function GET() {
       }
     })
 
-    const chartDayKeys: string[] = []
-    for (let i = 6; i >= 0; i--) {
-      const t = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
-      chartDayKeys.push(formatISTDateKey(t))
-    }
     const chartStart = new Date(`${chartDayKeys[0]}T00:00:00+05:30`).toISOString()
 
-    const { data: chartRows, error: chartErr } = await supabase
+    const { data: chartRowsRaw, error: chartErr } = await supabase
       .from('speed_to_lead_log')
-      .select('received_at, response_seconds')
+      .select('received_at, response_seconds, lead_id')
       .gte('received_at', chartStart)
       .not('response_seconds', 'is', null)
 
     if (chartErr) throw new Error(chartErr.message)
 
+    const chartRows = await filterLogsByAgentClaimPool(
+      supabase,
+      chartRowsRaw || [],
+      agentId
+    )
+
     const bucketSeconds = new Map<string, number[]>()
     for (const k of chartDayKeys) {
       bucketSeconds.set(k, [])
     }
-    for (const row of chartRows || []) {
+    for (const row of chartRows) {
       if (typeof row.response_seconds !== 'number') continue
       const key = formatISTDateKey(new Date(String(row.received_at)))
       if (!bucketSeconds.has(key)) continue

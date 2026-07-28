@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { requireVapiSecret } from '../../../../lib/require-vapi-secret'
 import type { PropertySearchFilters, PropertySearchResult } from '../../../../types/property'
 
 type VapiFunctionCall = {
@@ -14,17 +15,12 @@ type VapiMessageBody = {
   }
 }
 
-function validateVapiRequest(req: NextRequest): boolean {
-  const expectedSecret =
-    process.env.VAPI_SERVER_SECRET || process.env.VITE_VAPI_SERVER_SECRET
-
-  // If no secret configured, skip validation (useful in local dev)
-  if (!expectedSecret) return true
-
-  const headerSecret =
-    req.headers.get('x-vapi-signature') || req.headers.get('x-vapi-secret')
-
-  return headerSecret === expectedSecret
+function vapiSecretHeaderValue(): string | undefined {
+  return (
+    process.env.VAPI_WEBHOOK_SECRET ||
+    process.env.VAPI_SERVER_SECRET ||
+    process.env.VITE_VAPI_SERVER_SECRET
+  )?.trim()
 }
 
 function getAppBaseUrl(): string {
@@ -114,12 +110,8 @@ function formatResultsForSpeech(
 
 export async function POST(req: NextRequest) {
   try {
-    if (!validateVapiRequest(req)) {
-      return NextResponse.json(
-        { error: 'Unauthorized VAPI request' },
-        { status: 401 }
-      )
-    }
+    const auth = await requireVapiSecret(req)
+    if (auth !== true) return auth
 
     const body = (await req.json().catch(() => null)) as VapiMessageBody | null
 
@@ -142,10 +134,12 @@ export async function POST(req: NextRequest) {
 
     const baseUrl = getAppBaseUrl()
 
+    const secret = vapiSecretHeaderValue()
     const response = await fetch(`${baseUrl}/api/properties/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(secret ? { 'x-vapi-secret': secret } : {}),
       },
       body: JSON.stringify(filters),
     })

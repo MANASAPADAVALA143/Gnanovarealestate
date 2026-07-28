@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../../../../lib/api-fetch'
 
 type CampaignListRow = {
   id: string
@@ -43,7 +44,7 @@ export default function CampaignsPage() {
     ;(async () => {
       setLoading(true)
       try {
-        const res = await fetch('/api/campaigns')
+        const res = await apiFetch('/api/campaigns')
         const j = await res.json()
         if (!res.ok) throw new Error(j.error || 'Failed to load campaigns')
         if (!cancelled) setCampaigns(j.campaigns || [])

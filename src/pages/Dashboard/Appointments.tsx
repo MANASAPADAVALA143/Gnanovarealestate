@@ -172,7 +172,7 @@ export default function AppointmentsPage() {
         .eq('agent_id', agent.id)
         .order('created_at', { ascending: false })
         .limit(80),
-      supabase.from('agents').select('id, full_name').order('full_name').limit(200),
+      supabase.from('agents_directory').select('id, full_name').order('full_name').limit(200),
     ])
     if (!propRes.error && propRes.data) setProperties(propRes.data as PropertyRow[])
     if (!leadsRes.error && leadsRes.data) setLeads(leadsRes.data as LeadRow[])

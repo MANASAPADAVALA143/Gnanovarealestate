@@ -60,9 +60,13 @@ export default function LeadsPage() {
 
   async function loadAgents() {
     try {
-      let res = await supabase.from('agents').select('id, full_name').eq('is_available', true).order('full_name')
+      let res = await supabase
+        .from('agents_directory')
+        .select('id, full_name')
+        .eq('is_available', true)
+        .order('full_name')
       if (res.error) {
-        res = await supabase.from('agents').select('id, full_name').order('full_name')
+        res = await supabase.from('agents_directory').select('id, full_name').order('full_name')
       }
       if (res.error) throw res.error
       setAgents((res.data as AgentPick[]) || [])

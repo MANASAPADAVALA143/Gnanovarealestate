@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getImportJob } from '../../../../lib/leads-import-status'
 
 export const runtime = 'nodejs'
@@ -10,6 +11,9 @@ function isUuid(id: string): boolean {
 }
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAgent(req)
+  if (!isAgentAuth(auth)) return auth
+
   const jobId = req.nextUrl.searchParams.get('jobId') || ''
 
   if (!jobId || !isUuid(jobId)) {

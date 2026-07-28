@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PropertyCard from '../../../components/properties/PropertyCard'
+import { apiFetch } from '../../../lib/api-fetch'
 import type { Property } from '../../../types/property'
 
 type AnalyticsStatsResponse = {
@@ -68,14 +69,14 @@ export default function DashboardPage() {
 
       try {
         const [analyticsRes, searchRes, scoredRes, speedRes] = await Promise.all([
-          fetch('/api/analytics/stats'),
-          fetch('/api/properties/search', {
+          apiFetch('/api/analytics/stats'),
+          apiFetch('/api/properties/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query: 'property search' }),
           }),
-          fetch('/api/leads/scored?minScore=0&maxScore=100&limit=1'),
-          fetch('/api/speed-to-lead/stats'),
+          apiFetch('/api/leads/scored?minScore=0&maxScore=100&limit=1'),
+          apiFetch('/api/speed-to-lead/stats'),
         ])
 
         const analyticsRaw = (await analyticsRes.json().catch(() => null)) as

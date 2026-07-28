@@ -10,6 +10,7 @@ import {
   PHONE_ALIASES,
   guessColumn,
 } from '../../../../../lib/import-column-guess'
+import { apiFetch } from '../../../../../lib/api-fetch'
 
 type PreviewState = {
   headers: string[]
@@ -131,7 +132,7 @@ export default function ImportContactsPage() {
     stopPoll()
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/leads/import-status?jobId=${encodeURIComponent(id)}`)
+        const res = await apiFetch(`/api/leads/import-status?jobId=${encodeURIComponent(id)}`)
         const json = (await res.json()) as StatusPayload
         setProgress(json)
         if (json.status === 'completed' || json.status === 'failed') {
@@ -169,7 +170,7 @@ export default function ImportContactsPage() {
     form.set('emailColumn', emailColumn)
 
     try {
-      const res = await fetch('/api/leads/bulk-import', {
+      const res = await apiFetch('/api/leads/bulk-import', {
         method: 'POST',
         body: form,
       })

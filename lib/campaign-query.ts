@@ -13,6 +13,12 @@ export type CampaignFilters = {
   maxContacts: number
 }
 
+/** Claim-pool option A: own leads + unassigned (agent_id IS NULL). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function applyAgentClaimPoolFilter(q: any, agentId: string): any {
+  return q.or(`agent_id.eq.${agentId},agent_id.is.null`)
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyLeadFilters(q: any, filters: CampaignFilters): any {
   let query = q
@@ -43,10 +49,12 @@ export function applyLeadFilters(q: any, filters: CampaignFilters): any {
 
 export async function fetchMatchingLeadIds(
   supabase: SupabaseClient,
-  filters: CampaignFilters
+  filters: CampaignFilters,
+  agentId?: string
 ): Promise<string[]> {
   const cap = Math.min(Math.max(1, filters.maxContacts), 100_000)
   let q = supabase.from('leads').select('id').order('created_at', { ascending: false }).limit(cap)
+  if (agentId) q = applyAgentClaimPoolFilter(q, agentId)
   q = applyLeadFilters(q, filters)
   const { data, error } = await q
   if (error) throw new Error(error.message)
@@ -55,10 +63,12 @@ export async function fetchMatchingLeadIds(
 
 export async function countMatchingLeads(
   supabase: SupabaseClient,
-  filters: CampaignFilters
+  filters: CampaignFilters,
+  agentId?: string
 ): Promise<number> {
   const cap = Math.min(Math.max(1, filters.maxContacts), 100_000)
   let q = supabase.from('leads').select('id', { count: 'exact', head: true })
+  if (agentId) q = applyAgentClaimPoolFilter(q, agentId)
   q = applyLeadFilters(q, filters)
   const { count, error } = await q
   if (error) throw new Error(error.message)
@@ -69,7 +79,8 @@ export async function countMatchingLeads(
 export async function previewMatchingLeads(
   supabase: SupabaseClient,
   filters: CampaignFilters,
-  previewLimit: number
+  previewLimit: number,
+  agentId?: string
 ): Promise<
   {
     id: string
@@ -86,6 +97,7 @@ export async function previewMatchingLeads(
     .select('id,name,phone,location,lead_score,score_label')
     .order('created_at', { ascending: false })
     .limit(Math.min(cap, previewLimit))
+  if (agentId) q = applyAgentClaimPoolFilter(q, agentId)
   q = applyLeadFilters(q, filters)
   const { data, error } = await q
   if (error) throw new Error(error.message)

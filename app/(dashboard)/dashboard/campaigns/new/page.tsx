@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { apiFetch } from '../../../../../lib/api-fetch'
 
 type ScoreFilter = 'all' | 'unscored' | 'hot' | 'warm' | 'cold'
 
@@ -39,7 +40,7 @@ export default function NewCampaignPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/campaigns/filter-options')
+    apiFetch('/api/campaigns/filter-options')
       .then((r) => r.json())
       .then((j) => {
         if (!cancelled && j.locations) setLocations(j.locations as string[])
@@ -54,7 +55,7 @@ export default function NewCampaignPage() {
     setLoadingCount(true)
     setError(null)
     try {
-      const res = await fetch('/api/campaigns/preview', {
+      const res = await apiFetch('/api/campaigns/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filters),
@@ -93,7 +94,7 @@ export default function NewCampaignPage() {
     setLaunching(true)
     setError(null)
     try {
-      const res = await fetch('/api/campaigns/launch', {
+      const res = await apiFetch('/api/campaigns/launch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

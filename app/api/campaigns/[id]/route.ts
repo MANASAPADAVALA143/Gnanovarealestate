@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 
 export const runtime = 'nodejs'
 
-export async function GET(_req: NextRequest, ctx: { params: { id: string } }) {
+export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const id = ctx.params.id
     const supabase = getSupabaseServiceClient()
 
@@ -14,7 +18,8 @@ export async function GET(_req: NextRequest, ctx: { params: { id: string } }) {
         'id,name,status,created_at,started_at,completed_at,leads_count,total_leads,calls_made,calls_completed,calls_failed,calls_connected'
       )
       .eq('id', id)
-      .single()
+      .eq('agent_id', auth.agentId)
+      .maybeSingle()
 
     if (cErr || !campaign) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })

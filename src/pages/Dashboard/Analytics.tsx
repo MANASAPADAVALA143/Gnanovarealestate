@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
           .from('bookings')
           .select('id,lead_id,agent_id,scheduled_date,created_at')
           .gte('created_at', fetchFrom),
-        supabase.from('agents').select('id,full_name').order('full_name').limit(200),
+        supabase.from('agents_directory').select('id,full_name').order('full_name').limit(200),
       ])
       if (leadsRes.error) throw leadsRes.error
       if (callsRes.error) throw callsRes.error

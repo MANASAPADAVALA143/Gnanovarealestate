@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { requireAgentOrVapi } from '../../../../lib/require-vapi-secret'
 
 type CreateBookingBody = {
   propertyId: string
@@ -91,6 +92,9 @@ async function sendAgentNotification(params: {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAgentOrVapi(req)
+    if (auth instanceof NextResponse) return auth
+
     const rawBody = await req.json().catch(() => null)
     const { propertyId, leadId, preferredDate, preferredTime, notes } = validateBody(rawBody)
 
@@ -110,6 +114,7 @@ export async function POST(req: NextRequest) {
         scheduled_time: preferredTime,
         status,
         notes: notes ?? null,
+        ...(auth.agentId ? { agent_id: auth.agentId } : {}),
       })
       .select()
       .single()

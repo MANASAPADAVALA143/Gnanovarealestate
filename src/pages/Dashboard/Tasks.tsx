@@ -38,7 +38,7 @@ export default function TasksPage() {
   }, [agent, authLoading, filterAgentId])
 
   async function loadAgents() {
-    const { data } = await supabase.from('agents').select('id, full_name').order('full_name')
+    const { data } = await supabase.from('agents_directory').select('id, full_name').order('full_name')
     setAgents((data as AgentPick[]) || [])
   }
 

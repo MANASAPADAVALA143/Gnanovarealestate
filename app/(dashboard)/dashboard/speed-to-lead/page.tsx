@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import { apiFetch } from '../../../../lib/api-fetch'
 import {
   Bar,
   BarChart,
@@ -113,7 +114,7 @@ export default function SpeedToLeadPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/speed-to-lead/stats', { cache: 'no-store' })
+      const res = await apiFetch('/api/speed-to-lead/stats', { cache: 'no-store' })
       const j = (await res.json()) as StatsPayload & { error?: string }
       if (!res.ok) throw new Error(j.error || 'Failed to load')
       setData({

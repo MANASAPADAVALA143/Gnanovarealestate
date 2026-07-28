@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ConsentCheckbox, useConsentGate } from '@/src/components/ConsentCheckbox'
+import { supabase } from '@/src/lib/supabase'
 
 export default function DemoBookingForm() {
   const [formData, setFormData] = useState({
@@ -13,6 +15,9 @@ export default function DemoBookingForm() {
 
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  const { consentGiven, setConsentGiven, showConsentError, checkConsent, logConsent } =
+    useConsentGate(supabase)
   
   const countries = [
     { code: 'IN', name: 'India', flag: '🇮🇳', phonePrefix: '+91' },
@@ -34,19 +39,31 @@ export default function DemoBookingForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setResult(null)
+    if (!checkConsent()) return
+
+    setLoading(true)
 
     try {
       const response = await fetch('/api/schedule-demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          consent_given: true,
+          consent_timestamp: new Date().toISOString(),
+        }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
+        await logConsent({
+          email: formData.email,
+          phone: formData.phone,
+          context: 'demo',
+        })
+
         setResult({
           type: 'success',
           message: 'Demo scheduled successfully! Check your email for confirmation.',
@@ -61,6 +78,7 @@ export default function DemoBookingForm() {
           preferredTime: '',
           message: '',
         })
+        setConsentGiven(false)
       } else {
         setResult({
           type: 'error',
@@ -224,6 +242,13 @@ export default function DemoBookingForm() {
             placeholder="Tell us about your requirements or ask any questions..."
           />
         </div>
+
+        <ConsentCheckbox
+          checked={consentGiven}
+          onChange={setConsentGiven}
+          showError={showConsentError}
+          context="demo"
+        />
 
         <button
           type="submit"

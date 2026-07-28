@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import type { Property, PropertySearchResult } from '../../../../types/property'
 import { generateQueryEmbedding } from '../../../../lib/embeddings'
+import { requireAgentOrVapi } from '../../../../lib/require-vapi-secret'
 
 type RecommendRequestBody = {
   leadId: string
@@ -153,6 +154,9 @@ function buildSummary(
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAgentOrVapi(req)
+    if (auth instanceof NextResponse) return auth
+
     const body = (await req.json().catch(() => null)) as RecommendRequestBody | null
 
     if (!body || typeof body !== 'object') {

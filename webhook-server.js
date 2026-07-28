@@ -25,6 +25,7 @@ import { generateQueryEmbedding } from './lib/embeddings.ts'
 import { verifyFacebookWebhook, handleFacebookLeadWebhook } from './src/api/facebook-webhook.ts'
 import { handleVapiInboundCall, updateInboundCall } from './src/api/vapi-inbound.ts'
 import { onLeadCreated } from './lib/crm-hooks.ts'
+import { CONSENT_TEXT, logConsentToDb } from './src/lib/consent.ts'
 import { syncToGoHighLevel } from './src/lib/gohighlevel.ts'
 import { 
   createCampaign, 
@@ -47,6 +48,7 @@ import { parseDocument, uploadMiddleware } from './server/api/listing-writer-par
 import zillowRouter from './server/routes/zillow-webhook.ts'
 import { realtorPortalHandler } from './server/routes/realtor-webhook.ts'
 import openHouseRouter from './server/routes/open-house-routes.ts'
+import dataDeleteRouter from './server/routes/data-delete-route.ts'
 import { runOpenHouseScheduler } from './server/lib/open-house-scheduler.ts'
 import { runNudgeScheduler } from './server/lib/nudge-scheduler.ts'
 import { handleWhatsAppInboundWebhook } from './server/lib/whatsapp-inbound.ts'
@@ -64,6 +66,12 @@ import {
   bulkSubmitCommissionsHandler,
 } from './server/lib/commission-api.ts'
 import {
+  listBrokerInvoicesHandler,
+  createBrokerInvoiceHandler,
+  updateBrokerInvoiceHandler,
+  brokerPaymentStatusHandler,
+} from './server/lib/broker-invoices-api.ts'
+import {
   listThreadsHandler,
   getThreadHandler,
   assignThreadHandler,
@@ -77,9 +85,17 @@ import {
   upcomingViewingsHandler,
   updateViewingHandler,
 } from './server/lib/viewings-api.ts'
+import { captureRawBody } from './server/lib/capture-raw-body.ts'
+import {
+  rateLimiter,
+  validateFacebookSignature,
+  validateTwilioSignature,
+  validateVapiSignature,
+} from './server/lib/webhook-validation.ts'
 
 const app = express()
 app.use(cors())
+app.use(rateLimiter)
 
 // Realtor.com: verify HMAC on raw body — must run before express.json()
 app.post(
@@ -88,12 +104,14 @@ app.post(
   realtorPortalHandler
 )
 
-app.use(express.json())
+app.use(express.json({ limit: '2mb', verify: captureRawBody }))
+app.use(express.urlencoded({ extended: false, verify: captureRawBody }))
 
 // Zillow: JSON body (parsed by express.json())
 app.use('/api/portal/zillow', zillowRouter)
 
 app.use('/api/open-house', openHouseRouter)
+app.use('/api/admin', dataDeleteRouter)
 
 app.post('/api/test/run-nudge', async (_req, res) => {
   try {
@@ -217,7 +235,7 @@ app.get('/debug/env', (req, res) => {
   })
 })
 
-app.post('/api/vapi-webhook', async (req, res) => {
+app.post('/api/vapi-webhook', validateVapiSignature, async (req, res) => {
   try {
     console.log('Received VAPI webhook:', req.body?.type || 'unknown')
     const result = await handleVapiWebhook(req.body)
@@ -268,12 +286,18 @@ app.post('/api/vapi/initiate-call', async (req, res) => {
 
 app.post('/api/schedule-demo', async (req, res) => {
   try {
-    const { name, email, phone, company, country, preferredTime, message } = req.body
+    const { name, email, phone, company, country, preferredTime, message, consent_given } = req.body
 
     // Validate required fields
     if (!name || !email || !phone || !country || !preferredTime) {
       return res.status(400).json({
         error: 'Name, email, phone, country, and preferred time are required',
+      })
+    }
+
+    if (!consent_given) {
+      return res.status(400).json({
+        error: 'Privacy consent is required before submitting',
       })
     }
 
@@ -410,6 +434,12 @@ app.post('/api/leads/create', async (req, res) => {
       })
     }
 
+    if (!leadData.consent_given) {
+      return res.status(400).json({
+        error: 'Privacy consent is required before submitting',
+      })
+    }
+
     // 1. Save lead to Gnanova database
     if (!supabase) {
       return res.status(500).json({
@@ -428,6 +458,8 @@ app.post('/api/leads/create', async (req, res) => {
         property_id: leadData.property_id || null,
         source: leadData.source || 'website',
         status: 'new',
+        consent_given: true,
+        consent_timestamp: leadData.consent_timestamp || new Date().toISOString(),
         created_at: new Date().toISOString(),
       })
       .select()
@@ -446,7 +478,15 @@ app.post('/api/leads/create', async (req, res) => {
       source: lead.source || 'website',
       channel: 'web_form',
       status: lead.status || 'new',
+      consentText: CONSENT_TEXT.lead,
       ipAddress: req.ip || req.headers['x-forwarded-for'] || null,
+    })
+
+    await logConsentToDb(getSupabaseServerClient(), {
+      lead_id: lead.id,
+      email: leadData.email || undefined,
+      phone: leadData.phone,
+      context: 'lead',
     })
 
     // 2. NEW: Trigger VAPI call via n8n
@@ -514,7 +554,7 @@ app.get('/api/webhooks/facebook-leads', (req, res) => {
   }
 })
 
-app.post('/api/webhooks/facebook-leads', async (req, res) => {
+app.post('/api/webhooks/facebook-leads', validateFacebookSignature, async (req, res) => {
   try {
     const result = await handleFacebookLeadWebhook(req.body)
     if (result.success) {
@@ -529,7 +569,7 @@ app.post('/api/webhooks/facebook-leads', async (req, res) => {
 })
 
 // VAPI Inbound Receptionist
-app.post('/api/vapi/inbound', async (req, res) => {
+app.post('/api/vapi/inbound', validateVapiSignature, async (req, res) => {
   try {
     const result = await handleVapiInboundCall(req.body)
     if (result.success) {
@@ -544,7 +584,7 @@ app.post('/api/vapi/inbound', async (req, res) => {
 })
 
 // VAPI Inbound Call Update (call ended)
-app.post('/api/vapi/inbound/update', async (req, res) => {
+app.post('/api/vapi/inbound/update', validateVapiSignature, async (req, res) => {
   try {
     await updateInboundCall(req.body)
     res.status(200).json({ success: true })
@@ -825,6 +865,46 @@ app.patch('/api/deals/:id/commission', async (req, res) => {
 })
 
 // ========================================
+// BROKER INVOICES (additive — does not alter commission transitions)
+// ========================================
+
+app.get('/api/broker-invoices/payment-status', async (req, res) => {
+  try {
+    await brokerPaymentStatusHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Broker payment status error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.get('/api/broker-invoices', async (req, res) => {
+  try {
+    await listBrokerInvoicesHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('List broker invoices error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.post('/api/broker-invoices', async (req, res) => {
+  try {
+    await createBrokerInvoiceHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Create broker invoice error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+app.patch('/api/broker-invoices/:id', async (req, res) => {
+  try {
+    await updateBrokerInvoiceHandler(getSupabaseServerClient(), req, res)
+  } catch (error) {
+    console.error('Update broker invoice error:', error)
+    res.status(500).json({ error: error?.message || 'Internal server error' })
+  }
+})
+
+// ========================================
 // DEALS MODULE
 // ========================================
 
@@ -971,10 +1051,10 @@ app.patch('/api/viewings/:id', async (req, res) => {
   }
 })
 
-// Twilio inbound WhatsApp (urlencoded body — not JSON)
+// Twilio inbound WhatsApp (urlencoded body — validated via x-twilio-signature)
 app.post(
   '/webhook/whatsapp/inbound',
-  express.urlencoded({ extended: false }),
+  validateTwilioSignature,
   async (req, res) => {
     try {
       const { twiml, status } = await handleWhatsAppInboundWebhook(req)

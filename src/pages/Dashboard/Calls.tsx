@@ -209,7 +209,7 @@ export default function CallsPage() {
           )
           .eq('agent_id', agent.id)
           .order('created_at', { ascending: false }),
-        supabase.from('agents').select('id, full_name').order('full_name'),
+        supabase.from('agents_directory').select('id, full_name').order('full_name'),
       ])
 
       if (callsRes.error) throw callsRes.error

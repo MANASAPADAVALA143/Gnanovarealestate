@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyAgentClaimPoolFilter } from '../../../../lib/campaign-query'
+import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 
 export const runtime = 'nodejs'
@@ -15,6 +17,9 @@ type LeadRow = Record<string, unknown>
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAgent(req)
+    if (!isAgentAuth(auth)) return auth
+
     const { searchParams } = new URL(req.url)
     const minScore = Math.min(100, Math.max(0, Number(searchParams.get('minScore') ?? 0)))
     const maxScore = Math.min(100, Math.max(0, Number(searchParams.get('maxScore') ?? 100)))
@@ -26,20 +31,52 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseServiceClient()
     const weekStart = startOfWeekUtc(new Date()).toISOString()
+    const agentId = auth.agentId
 
-    const { count: connectedThisWeek, error: connErr } = await supabase
-      .from('campaign_leads')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'completed')
-      .gt('duration_seconds', 15)
-      .gte('updated_at', weekStart)
+    if (campaignId) {
+      const { data: ownedCampaign, error: ownErr } = await supabase
+        .from('outbound_campaigns')
+        .select('id')
+        .eq('id', campaignId)
+        .eq('agent_id', agentId)
+        .maybeSingle()
+      if (ownErr) throw new Error(ownErr.message)
+      if (!ownedCampaign) {
+        return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+      }
+    }
 
-    if (connErr) {
-      console.error('[leads/scored] connected count:', connErr.message)
+    const { data: agentCampaigns, error: acErr } = await supabase
+      .from('outbound_campaigns')
+      .select('id')
+      .eq('agent_id', agentId)
+
+    if (acErr) {
+      console.error('[leads/scored] agent campaigns:', acErr.message)
+    }
+
+    const agentCampaignIds = (agentCampaigns || []).map((c) => (c as { id: string }).id)
+
+    let connectedThisWeek = 0
+    if (agentCampaignIds.length > 0) {
+      const { count, error: connErr } = await supabase
+        .from('campaign_leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .gt('duration_seconds', 15)
+        .gte('updated_at', weekStart)
+        .in('campaign_id', agentCampaignIds)
+
+      if (connErr) {
+        console.error('[leads/scored] connected count:', connErr.message)
+      } else {
+        connectedThisWeek = count ?? 0
+      }
     }
 
     async function baseLeadsQuery() {
       let q = supabase.from('leads').select('*').not('lead_score', 'is', null)
+      q = applyAgentClaimPoolFilter(q, agentId)
       if (location) q = q.eq('location', location)
       if (campaignId) {
         const { data: cl, error: clErr } = await supabase
@@ -65,7 +102,7 @@ export async function GET(req: NextRequest) {
           hotCount: 0,
           hotReadyCount: 0,
           avgScore: 0,
-          connectedThisWeek: connectedThisWeek ?? 0,
+          connectedThisWeek,
         },
       })
     }
@@ -98,6 +135,7 @@ export async function GET(req: NextRequest) {
       .lte('lead_score', maxClamped)
       .order('lead_score', { ascending: false })
       .limit(limit)
+    tableQuery = applyAgentClaimPoolFilter(tableQuery, agentId)
 
     if (location) tableQuery = tableQuery.eq('location', location)
     if (campaignId) {
@@ -115,7 +153,7 @@ export async function GET(req: NextRequest) {
             hotCount,
             hotReadyCount,
             avgScore,
-            connectedThisWeek: connectedThisWeek ?? 0,
+            connectedThisWeek,
           },
         })
       }
@@ -150,6 +188,7 @@ export async function GET(req: NextRequest) {
           .from('outbound_campaigns')
           .select('id,name')
           .in('id', campIds)
+          .eq('agent_id', agentId)
         if (!cErr && camps) {
           campNames = new Map((camps as { id: string; name: string }[]).map((c) => [c.id, c.name]))
         }
@@ -164,6 +203,8 @@ export async function GET(req: NextRequest) {
           updated_at: string | null
           campaign_id: string
         }
+        // Only enrich from this agent's campaigns
+        if (!campNames.has(row.campaign_id)) continue
         const arr = byLead.get(row.lead_id) || []
         arr.push(r)
         byLead.set(row.lead_id, arr)
@@ -222,7 +263,7 @@ export async function GET(req: NextRequest) {
         hotCount,
         hotReadyCount,
         avgScore,
-        connectedThisWeek: connectedThisWeek ?? 0,
+        connectedThisWeek,
       },
     })
   } catch (e: unknown) {

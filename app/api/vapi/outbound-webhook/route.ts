@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireVapiSecret } from '../../../../lib/require-vapi-secret'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 import { toE164 } from '../../../../lib/phone-e164'
 import { inferLeadTypeAndUrgencyFromTranscript } from '../../../../lib/lead-transcript-signals'
@@ -145,6 +146,9 @@ async function startNextVapiCall(params: {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireVapiSecret(req)
+  if (auth !== true) return auth
+
   let body: Record<string, unknown>
   try {
     body = (await req.json()) as Record<string, unknown>

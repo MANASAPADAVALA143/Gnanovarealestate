@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import type { Property, PropertySearchFilters, PropertySearchResult } from '../../../../types/property'
 import { generateQueryEmbedding } from '../../../../lib/embeddings'
+import { requireAgentOrVapi } from '../../../../lib/require-vapi-secret'
 
 type SearchPropertiesRow = Property & {
   similarity: number
@@ -108,6 +109,9 @@ function applyFilters(
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireAgentOrVapi(req)
+    if (auth instanceof NextResponse) return auth
+
     const body = await req.json().catch(() => null)
     const filters = validateFilters(body)
 
