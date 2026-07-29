@@ -16,16 +16,18 @@ export function resolveProtectedRouteAccess(opts: {
 }
 
 /**
- * Manager-only routes (e.g. Integrations — integration_settings RLS is manager-only).
- * Uses agents.is_manager from the client agent row (same flag as is_deal_manager()).
+ * Manager/owner routes (Integrations, Admin).
+ * Mirrors public.is_deal_manager() after 030 (is_manager OR is_owner).
  */
 export function shouldAllowManagerRoute(opts: {
   isManager: boolean
+  /** Owner is a superset of manager for route access. */
+  isOwner?: boolean
   /** Dev dashboard preview may explore manager screens without a real flag. */
   previewMode?: boolean
 }): boolean {
   if (opts.previewMode) return true
-  return opts.isManager
+  return opts.isManager || Boolean(opts.isOwner)
 }
 
 /**

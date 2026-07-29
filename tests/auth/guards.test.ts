@@ -50,6 +50,12 @@ describe('Manager-only route gate (Integrations)', () => {
       shouldAllowManagerRoute({ isManager: false, previewMode: true })
     ).toBe(true)
   })
+
+  it('allows owners who are not flagged is_manager', () => {
+    expect(
+      shouldAllowManagerRoute({ isManager: false, isOwner: true })
+    ).toBe(true)
+  })
 })
 
 describe('Login page redirect', () => {

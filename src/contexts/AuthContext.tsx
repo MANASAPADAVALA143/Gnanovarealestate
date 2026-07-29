@@ -39,6 +39,8 @@ function previewAgent(): Agent {
     location: 'India',
     subscription_tier: 'trial',
     subscription_status: 'trialing',
+    is_manager: true,
+    is_owner: true,
     created_at: new Date().toISOString(),
   }
 }

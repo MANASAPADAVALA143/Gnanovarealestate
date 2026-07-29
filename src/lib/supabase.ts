@@ -108,6 +108,8 @@ export type Agent = {
   subscription_tier: string
   subscription_status: string
   is_manager?: boolean
+  is_owner?: boolean
+  is_available?: boolean
   created_at: string
 }
 

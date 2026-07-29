@@ -26,6 +26,7 @@ import {
   Banknote,
   MessageCircle,
   FileText,
+  Shield,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -39,7 +40,8 @@ export default function DashboardLayout() {
     (typeof import.meta !== 'undefined' && import.meta.env?.VITE_NEXT_APP_URL?.replace(/\/$/, '')) ||
     'http://localhost:3002'
 
-  const isManager = Boolean(agent?.is_manager) || dashboardPreview
+  const isManager =
+    Boolean(agent?.is_manager) || Boolean(agent?.is_owner) || dashboardPreview
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -56,9 +58,12 @@ export default function DashboardLayout() {
     { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
     { name: 'Open House', href: '/dashboard/open-house', icon: DoorOpen },
-    // Manager-only: integration_settings RLS is is_deal_manager() — hide from agents
+    // Manager/owner: Integrations + Admin (is_deal_manager after 030)
     ...(isManager
-      ? [{ name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon }]
+      ? [
+          { name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon },
+          { name: 'Admin', href: '/dashboard/admin', icon: Shield },
+        ]
       : []),
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },

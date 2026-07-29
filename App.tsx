@@ -18,6 +18,7 @@ import CallsPage from './src/pages/Dashboard/Calls'
 import AppointmentsPage from './src/pages/Dashboard/Appointments'
 import OpenHousePage from './src/pages/Dashboard/OpenHouse'
 import AnalyticsPage from './src/pages/Dashboard/Analytics'
+import AdminPage from './src/pages/Dashboard/Admin'
 import AgentSettingsPage from './src/pages/Dashboard/AgentSettings'
 import PipelinePage from './src/pages/Dashboard/Pipeline'
 import TasksPage from './src/pages/Dashboard/Tasks'
@@ -65,6 +66,7 @@ function ProtectedRoute({
     if (
       !shouldAllowManagerRoute({
         isManager: Boolean(agent?.is_manager),
+        isOwner: Boolean(agent?.is_owner),
         previewMode: dashboardPreview,
       })
     ) {
@@ -123,6 +125,14 @@ function App() {
               element={
                 <ProtectedRoute requireManager>
                   <IntegrationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute requireManager>
+                  <AdminPage />
                 </ProtectedRoute>
               }
             />
