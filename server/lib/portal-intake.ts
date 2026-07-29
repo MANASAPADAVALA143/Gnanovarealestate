@@ -13,6 +13,8 @@ export interface NormalisedLead {
   location?: string
   property_address?: string
   specialty_tags?: string[]
+  /** Optional upstream classification; when 'hot', matcher can use rank path. */
+  score_label?: string | null
   portal_source: 'zillow' | 'realtor'
   portal_lead_id: string
   raw_payload: Record<string, unknown>
@@ -44,6 +46,9 @@ async function resolveAgentIdForLead(supabase: SupabaseClient, lead: NormalisedL
   let resolvedAgentId: string | null = await matchAgent(supabase, {
     zip_code: zip,
     specialty_tags: lead.specialty_tags,
+    score_label: lead.score_label ?? null,
+    // Step B Option A: enable rank path in matcher when this lead is marked Hot.
+    useRankForHotLeads: true,
   })
 
   if (!resolvedAgentId) {
