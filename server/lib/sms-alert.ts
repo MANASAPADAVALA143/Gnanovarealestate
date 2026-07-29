@@ -73,3 +73,35 @@ export async function sendAgentSMSAlert(input: AlertInput): Promise<{ success: b
     return { success: false, error: msg }
   }
 }
+
+/** Plain SMS to an agent (e.g. Hot lead reassigned away after merit routing). */
+export async function sendAgentPlainSms(input: {
+  agentPhone: string
+  body: string
+}): Promise<{ success: boolean; error?: string }> {
+  const client = getTwilioClient()
+  const from = process.env.TWILIO_PHONE_NUMBER
+  if (!client || !from) {
+    console.warn('[sms-alert] Twilio not configured; skipping plain SMS')
+    return { success: false, error: 'Twilio not configured' }
+  }
+
+  const to = toE164(input.agentPhone)
+  if (!to || to.replace(/\D/g, '').length < 8) {
+    console.warn('[sms-alert] Invalid agent phone; skipping plain SMS')
+    return { success: false, error: 'Invalid agent phone' }
+  }
+
+  try {
+    await client.messages.create({
+      body: input.body,
+      from,
+      to,
+    })
+    return { success: true }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[sms-alert] plain SMS failed:', msg)
+    return { success: false, error: msg }
+  }
+}

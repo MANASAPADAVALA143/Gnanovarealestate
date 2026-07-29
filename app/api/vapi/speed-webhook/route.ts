@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireVapiSecret } from '../../../../lib/require-vapi-secret'
 import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
 import { inferLeadTypeAndUrgencyFromTranscript } from '../../../../lib/lead-transcript-signals'
-import { sendAgentSMSAlert } from '../../../../server/lib/sms-alert'
+import { extractZip, matchAgent } from '../../../../server/lib/agent-matcher'
+import { brokerHasHumanContactedLead } from '../../../../server/lib/broker-human-contact'
+import { sendAgentPlainSms, sendAgentSMSAlert } from '../../../../server/lib/sms-alert'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -170,7 +172,12 @@ Respond ONLY with valid JSON (no markdown), for example:
         const raw = block && block.type === 'text' ? block.text : '{}'
         const parsed = parseJsonFromClaudeText(raw)
         const s = parsed.score
-        score = typeof s === 'number' ? Math.min(100, Math.max(0, s)) : typeof s === 'string' ? Math.min(100, Math.max(0, num(s))) : 0
+        score =
+          typeof s === 'number'
+            ? Math.min(100, Math.max(0, s))
+            : typeof s === 'string'
+              ? Math.min(100, Math.max(0, num(s)))
+              : 0
         scoreLabel =
           typeof parsed.score_label === 'string' ? String(parsed.score_label) : 'Cold'
       } catch (e) {
@@ -212,7 +219,7 @@ Respond ONLY with valid JSON (no markdown), for example:
 
   const { data: leadRow } = await supabase
     .from('leads')
-    .select('id, name, phone, agent_id, location, budget_mentioned')
+    .select('id, name, phone, agent_id, location, property_address, budget_mentioned')
     .eq('id', leadId)
     .maybeSingle()
 
@@ -221,11 +228,88 @@ Respond ONLY with valid JSON (no markdown), for example:
     phone: string
     agent_id: string | null
     location: string | null
+    property_address?: string | null
     budget_mentioned: string | null
   } | null
 
+  let reassigned = false
+  let previousAgentId: string | null = null
+
+  // Step C: after Hot score, reassign to highest-ranked available broker (unless already contacted)
+  if (lr && String(scoreLabel).trim().toLowerCase() === 'hot' && lr.agent_id) {
+    previousAgentId = lr.agent_id
+    const excludeVapiId = vapiCallId || log.vapi_call_id || null
+
+    const contact = await brokerHasHumanContactedLead(supabase, {
+      leadId,
+      agentId: previousAgentId,
+      excludeVapiCallId: excludeVapiId,
+    })
+
+    if (contact.contacted) {
+      console.log(
+        `[speed-webhook] reason=rank_hot_skipped_already_contacted lead=${leadId}` +
+          ` agent=${previousAgentId} signal=${contact.signal}`
+      )
+    } else {
+      const zip = extractZip(lr.location) || extractZip(lr.property_address)
+      const newAgentId = await matchAgent(supabase, {
+        zip_code: zip,
+        score_label: 'hot',
+        useRankForHotLeads: true,
+      })
+
+      if (newAgentId && newAgentId !== previousAgentId) {
+        const { data: rankRows } = await supabase
+          .from('agents')
+          .select('id, broker_rank_score, full_name, phone')
+          .in('id', [previousAgentId, newAgentId])
+
+        type AgentRankRow = {
+          id: string
+          broker_rank_score?: number | null
+          full_name?: string | null
+          phone?: string | null
+        }
+        const ranks = new Map(((rankRows as AgentRankRow[]) || []).map((r) => [r.id, r]))
+        const oldR = ranks.get(previousAgentId)
+        const newR = ranks.get(newAgentId)
+
+        const { error: reassignErr } = await supabase
+          .from('leads')
+          .update({ agent_id: newAgentId, updated_at: now })
+          .eq('id', leadId)
+
+        if (reassignErr) {
+          console.error('[speed-webhook] Hot reassignment failed:', reassignErr.message)
+        } else {
+          lr.agent_id = newAgentId
+          reassigned = true
+          console.log(
+            `[speed-webhook] reason=rank_hot reassigned lead=${leadId}` +
+              ` from=${previousAgentId}(rank=${oldR?.broker_rank_score ?? 'n/a'})` +
+              ` to=${newAgentId}(rank=${newR?.broker_rank_score ?? 'n/a'})` +
+              ` names="${oldR?.full_name ?? '?'}"→"${newR?.full_name ?? '?'}"`
+          )
+
+          if (oldR?.phone) {
+            const leadName = lr.name?.trim() || 'Lead'
+            await sendAgentPlainSms({
+              agentPhone: oldR.phone,
+              body: `Lead ${leadName} reassigned to a higher-ranked broker after Hot score — no action needed.`,
+            })
+          }
+        }
+      }
+    }
+  }
+
   if (lr?.agent_id) {
-    const { data: agentRow } = await supabase.from('agents').select('phone').eq('id', lr.agent_id).maybeSingle()
+    const { data: agentRow } = await supabase
+      .from('agents')
+      .select('phone')
+      .eq('id', lr.agent_id)
+      .maybeSingle()
     const aphone = (agentRow as { phone: string | null } | null)?.phone
     if (aphone) {
       const budgetStr = lr.budget_mentioned?.trim() || undefined
@@ -248,5 +332,8 @@ Respond ONLY with valid JSON (no markdown), for example:
     score,
     scoreLabel,
     durationSeconds,
+    reassigned,
+    previousAgentId: reassigned ? previousAgentId : undefined,
+    assignedAgentId: lr?.agent_id ?? undefined,
   })
 }
