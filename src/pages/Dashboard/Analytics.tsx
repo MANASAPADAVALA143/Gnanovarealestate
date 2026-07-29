@@ -55,7 +55,12 @@ type BookingRow = {
   created_at?: string | null
 }
 
-type AgentRow = { id: string; full_name: string | null }
+type AgentRow = {
+  id: string
+  full_name: string | null
+  broker_rank_score?: number | null
+  rank_updated_at?: string | null
+}
 
 const SOURCE_KEYS = ['Zillow', 'Realtor.com', 'Web', 'Open House', 'Manual', 'Referral'] as const
 
@@ -135,7 +140,11 @@ export default function AnalyticsPage() {
           .from('bookings')
           .select('id,lead_id,agent_id,scheduled_date,created_at')
           .gte('created_at', fetchFrom),
-        supabase.from('agents_directory').select('id,full_name').order('full_name').limit(200),
+        supabase
+          .from('agents_directory')
+          .select('id,full_name,broker_rank_score,rank_updated_at')
+          .order('broker_rank_score', { ascending: false })
+          .limit(200),
       ])
       if (leadsRes.error) throw leadsRes.error
       if (callsRes.error) throw callsRes.error
@@ -144,6 +153,15 @@ export default function AnalyticsPage() {
       setCalls((callsRes.data as CallRow[]) || [])
       setBookings((bookingsRes.data as BookingRow[]) || [])
       if (!agentsRes.error && agentsRes.data) setAgents(agentsRes.data as AgentRow[])
+      // If migration 029 not applied yet, broker_rank_score column missing — fall back
+      else if (agentsRes.error) {
+        const fallback = await supabase
+          .from('agents_directory')
+          .select('id,full_name')
+          .order('full_name')
+          .limit(200)
+        if (!fallback.error && fallback.data) setAgents(fallback.data as AgentRow[])
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load analytics')
     } finally {
@@ -307,21 +325,33 @@ export default function AnalyticsPage() {
   const leaderboard = useMemo(() => {
     const byAgent = new Map<
       string,
-      { calls: number; appts: number; hot: number; name: string }
+      {
+        calls: number
+        appts: number
+        hot: number
+        name: string
+        broker_rank_score: number
+      }
     >()
-    const ensure = (id: string, name: string) => {
-      if (!byAgent.has(id)) byAgent.set(id, { calls: 0, appts: 0, hot: 0, name })
+    const ensure = (id: string, name: string, rank = 0) => {
+      if (!byAgent.has(id)) {
+        byAgent.set(id, { calls: 0, appts: 0, hot: 0, name, broker_rank_score: rank })
+      }
       const row = byAgent.get(id)!
       row.name = name
+      if (rank > 0) row.broker_rank_score = rank
     }
-    agents.forEach((a) => ensure(a.id, a.full_name || 'Agent'))
+    agents.forEach((a) =>
+      ensure(a.id, a.full_name || 'Agent', Number(a.broker_rank_score ?? 0))
+    )
 
     agentScopedCalls
       .filter((c) => inWindow(c.created_at, startCurr, endCurr))
       .forEach((c) => {
         const id = c.agent_id || agent?.id || ''
         if (!id) return
-        ensure(id, agents.find((x) => x.id === id)?.full_name || 'Agent')
+        const meta = agents.find((x) => x.id === id)
+        ensure(id, meta?.full_name || 'Agent', Number(meta?.broker_rank_score ?? 0))
         byAgent.get(id)!.calls += 1
       })
 
@@ -333,7 +363,8 @@ export default function AnalyticsPage() {
       .forEach((b) => {
         const id = b.agent_id || agent?.id || ''
         if (!id) return
-        ensure(id, agents.find((x) => x.id === id)?.full_name || 'Agent')
+        const meta = agents.find((x) => x.id === id)
+        ensure(id, meta?.full_name || 'Agent', Number(meta?.broker_rank_score ?? 0))
         byAgent.get(id)!.appts += 1
       })
 
@@ -342,7 +373,8 @@ export default function AnalyticsPage() {
       .forEach((l) => {
         const id = l.agent_id || agent?.id || ''
         if (!id) return
-        ensure(id, agents.find((x) => x.id === id)?.full_name || 'Agent')
+        const meta = agents.find((x) => x.id === id)
+        ensure(id, meta?.full_name || 'Agent', Number(meta?.broker_rank_score ?? 0))
         byAgent.get(id)!.hot += 1
       })
 
@@ -353,9 +385,18 @@ export default function AnalyticsPage() {
       appts: v.appts,
       hot: v.hot,
       conversion: v.calls > 0 ? Math.round((v.appts / v.calls) * 1000) / 10 : 0,
+      broker_rank_score: v.broker_rank_score,
     }))
-    rows.sort((a, b) => b.conversion - a.conversion)
-    const nonzero = rows.filter((r) => r.calls > 0 || r.appts > 0 || r.hot > 0)
+    // Primary sort: persisted merit rank (migration 029). Tie-break: conversion.
+    rows.sort((a, b) => {
+      if (b.broker_rank_score !== a.broker_rank_score) {
+        return b.broker_rank_score - a.broker_rank_score
+      }
+      return b.conversion - a.conversion
+    })
+    const nonzero = rows.filter(
+      (r) => r.calls > 0 || r.appts > 0 || r.hot > 0 || r.broker_rank_score > 0
+    )
     return (nonzero.length ? nonzero : rows).slice(0, 10)
   }, [agents, agentScopedCalls, agentScopedBookings, agentScopedLeads, startCurr, endCurr, agent?.id])
 
@@ -562,13 +603,16 @@ export default function AnalyticsPage() {
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">Agent leaderboard</h2>
-          <p className="text-sm text-slate-500">Top 10 by appointment conversion (appointments / calls)</p>
+          <p className="text-sm text-slate-500">
+            Top 10 by broker rank score (merit). Activity columns are for the selected date range.
+          </p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
+          <table className="w-full min-w-[720px]">
             <thead className="bg-slate-50 text-left text-xs font-medium text-slate-600 uppercase">
               <tr>
                 <th className="px-4 py-3">Agent</th>
+                <th className="px-4 py-3">Rank score</th>
                 <th className="px-4 py-3">Calls made</th>
                 <th className="px-4 py-3">Appointments</th>
                 <th className="px-4 py-3">Hot leads</th>
@@ -578,7 +622,7 @@ export default function AnalyticsPage() {
             <tbody className="divide-y divide-slate-200 text-sm">
               {leaderboard.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
                     No agent activity in this range.
                   </td>
                 </tr>
@@ -586,10 +630,13 @@ export default function AnalyticsPage() {
                 leaderboard.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
+                    <td className="px-4 py-3 text-slate-900 font-semibold">
+                      {Number.isFinite(r.broker_rank_score) ? r.broker_rank_score.toFixed(1) : '—'}
+                    </td>
                     <td className="px-4 py-3 text-slate-700">{r.calls}</td>
                     <td className="px-4 py-3 text-slate-700">{r.appts}</td>
                     <td className="px-4 py-3 text-slate-700">{r.hot}</td>
-                    <td className="px-4 py-3 text-slate-900 font-semibold">{r.conversion}%</td>
+                    <td className="px-4 py-3 text-slate-700">{r.conversion}%</td>
                   </tr>
                 ))
               )}
