@@ -49,6 +49,7 @@ import zillowRouter from './server/routes/zillow-webhook.ts'
 import { realtorPortalHandler } from './server/routes/realtor-webhook.ts'
 import openHouseRouter from './server/routes/open-house-routes.ts'
 import dataDeleteRouter from './server/routes/data-delete-route.ts'
+import { createAdSpendRouter } from './server/routes/ad-spend.ts'
 import { runOpenHouseScheduler } from './server/lib/open-house-scheduler.ts'
 import { runNudgeScheduler } from './server/lib/nudge-scheduler.ts'
 import { handleWhatsAppInboundWebhook } from './server/lib/whatsapp-inbound.ts'
@@ -903,6 +904,11 @@ app.patch('/api/broker-invoices/:id', async (req, res) => {
     res.status(500).json({ error: error?.message || 'Internal server error' })
   }
 })
+
+// ========================================
+// META / PORTAL AD SPEND (manual CPL attribution)
+// ========================================
+app.use('/api/ad-spend', createAdSpendRouter(getSupabaseServerClient))
 
 // ========================================
 // DEALS MODULE

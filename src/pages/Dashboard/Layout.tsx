@@ -27,6 +27,7 @@ import {
   MessageCircle,
   FileText,
   Shield,
+  TrendingUp,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -59,14 +60,15 @@ export default function DashboardLayout() {
     { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
     { name: 'Open House', href: '/dashboard/open-house', icon: DoorOpen },
-    // Manager/owner: Integrations + Admin (is_deal_manager after 030)
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    // Manager/owner: Meta Ads, Integrations, Admin
     ...(showAdminNav
       ? [
+          { name: 'Meta Ads', href: '/dashboard/meta-ads', icon: TrendingUp },
           { name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon },
           { name: 'Admin', href: '/dashboard/admin', icon: Shield },
         ]
       : []),
-    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]

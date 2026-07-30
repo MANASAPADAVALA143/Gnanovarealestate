@@ -19,6 +19,7 @@ import AppointmentsPage from './src/pages/Dashboard/Appointments'
 import OpenHousePage from './src/pages/Dashboard/OpenHouse'
 import AnalyticsPage from './src/pages/Dashboard/Analytics'
 import AdminPage from './src/pages/Dashboard/Admin'
+import MetaAdsPage from './src/pages/Dashboard/MetaAds'
 import AgentSettingsPage from './src/pages/Dashboard/AgentSettings'
 import PipelinePage from './src/pages/Dashboard/Pipeline'
 import TasksPage from './src/pages/Dashboard/Tasks'
@@ -137,6 +138,14 @@ function App() {
               }
             />
             <Route path="analytics" element={<AnalyticsPage />} />
+            <Route
+              path="meta-ads"
+              element={
+                <ProtectedRoute requireManager>
+                  <MetaAdsPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="agent-settings" element={<AgentSettingsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

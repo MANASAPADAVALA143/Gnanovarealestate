@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatAed } from '../../lib/broker-invoices'
+import { fetchAdSpendEntries, type AdSpendEntry } from '../../lib/ad-spend'
 import {
   fetchAdminAuditLog,
   fetchAdminBrokers,
@@ -22,6 +23,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 type TabId = 'revenue' | 'rankings' | 'brokers' | 'audit'
 
@@ -47,6 +49,10 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<AdminAuditEntry[]>([])
   const [isOwner, setIsOwner] = useState(false)
   const [rankDraft, setRankDraft] = useState<Record<string, string>>({})
+  const [adSpendMonth, setAdSpendMonth] = useState<{
+    totalSpend: number
+    blendedCpl: number | null
+  } | null>(null)
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -71,6 +77,24 @@ export default function AdminPage() {
         drafts[b.id] = String(b.broker_rank_score ?? 0)
       }
       setRankDraft(drafts)
+
+      try {
+        const now = new Date()
+        const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+        const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+        const { entries } = await fetchAdSpendEntries()
+        const monthRows = (entries || []).filter(
+          (e: AdSpendEntry) => e.period_start <= monthEnd && e.period_end >= monthStart
+        )
+        const totalSpend = monthRows.reduce((s, e) => s + (Number(e.spend_aed) || 0), 0)
+        const totalLeads = monthRows.reduce((s, e) => s + (Number(e.lead_count) || 0), 0)
+        setAdSpendMonth({
+          totalSpend,
+          blendedCpl: totalLeads > 0 ? totalSpend / totalLeads : null,
+        })
+      } catch {
+        setAdSpendMonth(null)
+      }
     } catch (e) {
       console.error(e)
       setError(e instanceof Error ? e.message : 'Failed to load admin data')
@@ -258,6 +282,26 @@ export default function AdminPage() {
               </table>
             </div>
           </div>
+
+          {adSpendMonth && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-slate-900">Ad Spend Summary</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  This month: {formatAed(adSpendMonth.totalSpend)}
+                  {' · '}
+                  Blended CPL:{' '}
+                  {adSpendMonth.blendedCpl != null ? formatAed(adSpendMonth.blendedCpl) : '—'}
+                </p>
+              </div>
+              <Link
+                to="/dashboard/meta-ads"
+                className="text-sm font-medium text-blue-700 hover:text-blue-900 whitespace-nowrap"
+              >
+                View full attribution →
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
