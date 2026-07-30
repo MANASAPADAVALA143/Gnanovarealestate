@@ -13,10 +13,10 @@ export default function FloatingCard({ delay = 0 }: FloatingCardProps) {
   }, [delay]);
 
   const activities = [
-    { type: 'lead', message: 'New lead qualified: Sarah M.', location: 'Los Angeles, CA', time: 'Just now' },
-    { type: 'match', message: 'Property matched: $2.4M Villa', location: 'Dubai Marina', time: '2 min ago' },
-    { type: 'appointment', message: 'Appointment booked: John D.', location: 'Sydney, AU', time: '5 min ago' },
-    { type: 'follow', message: 'Follow-up sent to Emma T.', location: 'London, UK', time: '8 min ago' }
+    { type: 'lead', message: 'New lead qualified: Sarah M.', location: 'Dubai Marina', time: 'Just now' },
+    { type: 'match', message: 'Property matched: AED 4.2M Villa', location: 'Palm Jumeirah', time: '2 min ago' },
+    { type: 'appointment', message: 'Appointment booked: John D.', location: 'Downtown Dubai', time: '5 min ago' },
+    { type: 'follow', message: 'Follow-up sent to Emma T.', location: 'Abu Dhabi', time: '8 min ago' }
   ];
 
   const activity = activities[Math.floor(Math.random() * activities.length)];

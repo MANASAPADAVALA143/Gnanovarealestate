@@ -48,7 +48,7 @@ export default function PropertyDetailsModal({
 
   const price =
     property.price !== null && property.price !== undefined
-      ? `$${property.price.toLocaleString()}`
+      ? `AED ${property.price.toLocaleString()}`
       : 'Price on request'
 
   const addressLine = property.address || 'Address not available'
@@ -56,7 +56,7 @@ export default function PropertyDetailsModal({
 
   const beds = property.bedrooms ?? 'N/A'
   const baths = property.bathrooms ?? 'N/A'
-  const sqft = property.sqft ? `${property.sqft.toLocaleString()} sqft` : 'Size N/A'
+  const sqft = property.sqft ? `${property.sqft.toLocaleString()} sqm` : 'Size N/A'
 
   const amenities = property.amenities ?? []
 
@@ -156,7 +156,7 @@ export default function PropertyDetailsModal({
                 </div>
                 <div>
                   <p className="font-semibold text-slate-800">HOA fee</p>
-                  <p>{property.hoa_fee ? `$${property.hoa_fee.toLocaleString()}` : 'None'}</p>
+                  <p>{property.hoa_fee ? `AED ${property.hoa_fee.toLocaleString()}` : 'None'}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="font-semibold text-slate-800">School district</p>

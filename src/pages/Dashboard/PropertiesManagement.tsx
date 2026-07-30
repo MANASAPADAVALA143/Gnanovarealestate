@@ -317,9 +317,15 @@ export default function PropertiesManagement() {
             <div>
               <p className="text-sm text-gray-600">Avg Price</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${properties.length > 0 
-                  ? Math.round(properties.reduce((sum, p) => sum + p.price, 0) / properties.length / 1000) 
-                  : 0}K
+                AED{' '}
+                {properties.length > 0
+                  ? Math.round(
+                      properties.reduce((sum, p) => sum + (Number(p.price) || 0), 0) /
+                        properties.length /
+                        1000
+                    )
+                  : 0}
+                K
               </p>
             </div>
           </div>
@@ -407,7 +413,8 @@ export default function PropertiesManagement() {
                 <strong>CSV Format:</strong>
               </p>
               <p className="text-xs text-gray-500 font-mono">
-                title, address, city, state, country, price, bedrooms, bathrooms, sqft, property_type, amenities, description, virtual_tour_url
+                title, address, city, state, country, price, bedrooms, bathrooms, sqm, property_type, amenities, description, virtual_tour_url
+                (use sqm for size — UAE square metres; column may still be named sqft in DB)
               </p>
             </div>
           </div>
@@ -478,7 +485,7 @@ export default function PropertiesManagement() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-semibold text-gray-900">
-                        ${property.price?.toLocaleString()}
+                        AED {property.price?.toLocaleString()}
                       </p>
                     </td>
                     <td className="px-4 py-3">
@@ -494,7 +501,7 @@ export default function PropertiesManagement() {
                         {property.sqft && (
                           <span className="flex items-center gap-1">
                             <Maximize className="w-4 h-4" />
-                            {property.sqft}
+                            {property.sqft} sqm
                           </span>
                         )}
                       </div>
@@ -711,7 +718,7 @@ function AddPropertyModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Price *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Price (AED) *</label>
               <input
                 type="number"
                 required
@@ -762,12 +769,12 @@ function AddPropertyModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Square Feet</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Size (sqm)</label>
               <input
                 type="number"
                 value={formData.sqft}
                 onChange={(e) => setFormData({...formData, sqft: e.target.value})}
-                placeholder="2000"
+                placeholder="185"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
             </div>

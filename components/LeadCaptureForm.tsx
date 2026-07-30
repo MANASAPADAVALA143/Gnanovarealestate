@@ -143,7 +143,7 @@ export default function LeadCaptureForm() {
             onChange={(e) => setFormData({...formData, location: e.target.value})}
             required
             className="w-full px-4 py-2 border rounded focus:outline-none focus:border-blue-500"
-            placeholder="New York, NY"
+            placeholder="Dubai Marina, Dubai"
           />
         </div>
 

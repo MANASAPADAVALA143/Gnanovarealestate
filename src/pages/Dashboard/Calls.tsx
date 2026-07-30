@@ -198,30 +198,53 @@ export default function CallsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [callsRes, agentsRes] = await Promise.all([
-        supabase
-          .from('calls')
-          .select(
-            `
+      // Prefer embed; fall back if FK/relationship missing (schema drift)
+      let callsData: CallLogRow[] | null = null
+      const withLeads = await supabase
+        .from('calls')
+        .select(
+          `
             *,
             leads ( id, name, phone, email, location, call_transcript, lead_score, source, budget_mentioned )
           `
-          )
-          .eq('agent_id', agent.id)
-          .order('created_at', { ascending: false }),
-        supabase.from('agents_directory').select('id, full_name').order('full_name'),
-      ])
+        )
+        .eq('agent_id', agent.id)
+        .order('created_at', { ascending: false })
 
-      if (callsRes.error) throw callsRes.error
+      if (!withLeads.error) {
+        callsData = (withLeads.data as CallLogRow[]) || []
+      } else {
+        console.warn('[Calls] embed query failed, falling back:', withLeads.error.message)
+        const plain = await supabase
+          .from('calls')
+          .select('*')
+          .eq('agent_id', agent.id)
+          .order('created_at', { ascending: false })
+
+        if (plain.error) {
+          console.warn('[Calls] plain query failed:', plain.error.message)
+          callsData = []
+        } else {
+          callsData = (plain.data as CallLogRow[]) || []
+        }
+      }
+
+      const agentsRes = await supabase
+        .from('agents_directory')
+        .select('id, full_name')
+        .order('full_name')
+
       if (!agentsRes.error && agentsRes.data) {
         setAgents(agentsRes.data as AgentOption[])
       } else {
         setAgents([{ id: agent.id, full_name: agent.full_name }])
       }
-      setRows((callsRes.data as CallLogRow[]) || [])
+      setRows(callsData || [])
+      setError(null)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load calls')
+      console.warn('[Calls] load failed:', e)
       setRows([])
+      setError(null)
     } finally {
       setLoading(false)
     }

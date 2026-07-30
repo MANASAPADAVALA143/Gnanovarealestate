@@ -114,7 +114,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (error) throw error
-      setAgent(data)
+      setAgent({
+        ...(data as Agent),
+        is_manager: Boolean((data as Agent)?.is_manager),
+        is_owner: Boolean((data as Agent)?.is_owner),
+      })
     } catch (error) {
       console.error('Error fetching agent:', error)
     } finally {

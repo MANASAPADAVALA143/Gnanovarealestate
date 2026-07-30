@@ -5,8 +5,8 @@ export default function Results() {
     {
       quote: 'Gnanova Real Estate helped me close 4 extra deals in 2 months. ROI was 600%.',
       name: 'Sarah Chen',
-      location: 'Los Angeles, CA',
-      result: '+$47,000 additional income',
+      location: 'Dubai Marina',
+      result: '+AED 47,000 additional income',
       image: '👩🏻‍💼'
     },
     {
@@ -19,7 +19,7 @@ export default function Results() {
     {
       quote: 'Finally, I can focus on what I do best - showing properties and closing deals. The AI handles everything else.',
       name: 'Emma Thompson',
-      location: 'Sydney, Australia',
+      location: 'Abu Dhabi, UAE',
       result: '12 new clients in 60 days',
       image: '👩🏼‍💼'
     }

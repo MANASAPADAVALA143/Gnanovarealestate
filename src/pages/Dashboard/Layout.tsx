@@ -42,6 +42,7 @@ export default function DashboardLayout() {
 
   const isManager =
     Boolean(agent?.is_manager) || Boolean(agent?.is_owner) || dashboardPreview
+  const showAdminNav = isManager
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -59,7 +60,7 @@ export default function DashboardLayout() {
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
     { name: 'Open House', href: '/dashboard/open-house', icon: DoorOpen },
     // Manager/owner: Integrations + Admin (is_deal_manager after 030)
-    ...(isManager
+    ...(showAdminNav
       ? [
           { name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon },
           { name: 'Admin', href: '/dashboard/admin', icon: Shield },

@@ -381,7 +381,7 @@ export default function ListingWriter() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               <Maximize className="w-4 h-4 inline mr-1" />
-              Size (sqft)
+              Size (sqm)
             </label>
             <input
               type="text"

@@ -35,14 +35,14 @@ export default function PropertyCard({
 
   const price =
     property.price !== null && property.price !== undefined
-      ? `$${property.price.toLocaleString()}`
+      ? `AED ${property.price.toLocaleString()}`
       : 'Price on request'
 
   const addressLine = property.address || 'Address not available'
 
   const beds = property.bedrooms ?? 'N/A'
   const baths = property.bathrooms ?? 'N/A'
-  const sqft = property.sqft ? `${property.sqft.toLocaleString()} sqft` : 'Size N/A'
+  const sqft = property.sqft ? `${property.sqft.toLocaleString()} sqm` : 'Size N/A'
 
   const amenities = property.amenities ?? []
   const keyAmenities = amenities.slice(0, 3)

@@ -7,9 +7,9 @@ interface HeroProps {
 
 export default function Hero({ onBookDemo }: HeroProps) {
   const villas = [
-    'https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=800',
-    'https://images.pexels.com/photos/1974596/pexels-photo-1974596.jpeg?auto=compress&cs=tinysrgb&w=800',
-    'https://images.pexels.com/photos/2581922/pexels-photo-2581922.jpeg?auto=compress&cs=tinysrgb&w=800',
+    'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800',
+    'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=800',
+    'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800',
   ];
 
   return (
@@ -90,7 +90,7 @@ export default function Hero({ onBookDemo }: HeroProps) {
                     <div className="absolute bottom-4 left-4 right-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-white font-bold text-lg">$2.4M</p>
+                          <p className="text-white font-bold text-lg">AED 4.2M</p>
                           <p className="text-slate-300 text-sm">Dubai Marina</p>
                         </div>
                         <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
@@ -119,7 +119,7 @@ export default function Hero({ onBookDemo }: HeroProps) {
                       <p className="text-white font-bold text-sm">Lead Qualified</p>
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                     </div>
-                    <p className="text-slate-300 text-xs">Sarah M. • Los Angeles</p>
+                    <p className="text-slate-300 text-xs">Sarah M. • Dubai Marina</p>
                     <p className="text-cyan-400 text-xs mt-1">Just now</p>
                   </div>
 
@@ -131,8 +131,8 @@ export default function Hero({ onBookDemo }: HeroProps) {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <div className="absolute bottom-3 left-3 right-3">
-                      <p className="text-white font-bold">$1.8M</p>
-                      <p className="text-slate-300 text-sm">Sydney, AU</p>
+                      <p className="text-white font-bold">AED 2.8M</p>
+                      <p className="text-slate-300 text-sm">Palm Jumeirah</p>
                     </div>
                   </div>
 
@@ -144,8 +144,8 @@ export default function Hero({ onBookDemo }: HeroProps) {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     <div className="absolute bottom-3 left-3 right-3">
-                      <p className="text-white font-bold text-sm">$3.2M</p>
-                      <p className="text-slate-300 text-xs">London, UK</p>
+                      <p className="text-white font-bold text-sm">AED 6.5M</p>
+                      <p className="text-slate-300 text-xs">Downtown Dubai</p>
                     </div>
                   </div>
                 </div>
