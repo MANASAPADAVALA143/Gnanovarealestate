@@ -173,6 +173,17 @@ export default function CallsPage() {
   const [agentFilter, setAgentFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [emailLogs, setEmailLogs] = useState<
+    Array<{
+      id: string
+      recipient_email: string | null
+      status: string
+      email_type: string
+      sent_at: string
+      leads?: { name: string | null } | null
+    }>
+  >([])
+  const [showEmailLog, setShowEmailLog] = useState(false)
 
   const applyDatePreset = (preset: typeof datePreset) => {
     setDatePreset(preset)
@@ -241,6 +252,19 @@ export default function CallsPage() {
       }
       setRows(callsData || [])
       setError(null)
+
+      const logsRes = await supabase
+        .from('email_logs')
+        .select('id, recipient_email, status, email_type, sent_at, leads ( name )')
+        .eq('email_type', 'post_call_followup')
+        .order('sent_at', { ascending: false })
+        .limit(50)
+
+      if (!logsRes.error && logsRes.data) {
+        setEmailLogs(logsRes.data as typeof emailLogs)
+      } else {
+        setEmailLogs([])
+      }
     } catch (e: unknown) {
       console.warn('[Calls] load failed:', e)
       setRows([])
@@ -859,6 +883,67 @@ export default function CallsPage() {
           </aside>
         </>
       )}
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowEmailLog((v) => !v)}
+          className="w-full text-left px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          {showEmailLog ? 'Hide' : 'Show'} follow-up email log ({emailLogs.length})
+        </button>
+        {showEmailLog && (
+          <div className="overflow-x-auto border-t border-slate-100">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="text-left px-4 py-2 font-medium">Lead Name</th>
+                  <th className="text-left px-4 py-2 font-medium">Email</th>
+                  <th className="text-left px-4 py-2 font-medium">Status</th>
+                  <th className="text-left px-4 py-2 font-medium">Sent At</th>
+                  <th className="text-left px-4 py-2 font-medium">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {emailLogs.map((log) => {
+                  const statusClass =
+                    log.status === 'sent'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : log.status === 'failed'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-slate-100 text-slate-600'
+                  return (
+                    <tr key={log.id} className="border-t border-slate-100">
+                      <td className="px-4 py-2 text-slate-900">
+                        {(log.leads as { name?: string | null } | null)?.name || '—'}
+                      </td>
+                      <td className="px-4 py-2 text-slate-600">{log.recipient_email || '—'}</td>
+                      <td className="px-4 py-2">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${statusClass}`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
+                        {log.sent_at
+                          ? format(new Date(log.sent_at), 'dd MMM yyyy HH:mm')
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-2 text-slate-600">{log.email_type}</td>
+                    </tr>
+                  )
+                })}
+                {emailLogs.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                      No follow-up emails logged yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

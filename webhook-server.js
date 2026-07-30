@@ -241,6 +241,19 @@ app.post('/api/vapi-webhook', validateVapiSignature, async (req, res) => {
     console.log('Received VAPI webhook:', req.body?.type || 'unknown')
     const result = await handleVapiWebhook(req.body)
     res.json(result)
+
+    // Post-call follow-up email — AFTER 200 so VAPI is not delayed.
+    // Does not alter scoring / call insert logic inside handleVapiWebhook.
+    const eventType = req.body?.type || req.body?.message?.type
+    if (eventType === 'call.ended' || eventType === 'end-of-call-report') {
+      setImmediate(() => {
+        import('./server/lib/post-call-followup.ts')
+          .then(({ schedulePostCallFollowUpFromVapiPayload }) =>
+            schedulePostCallFollowUpFromVapiPayload(getSupabaseServerClient(), req.body, result)
+          )
+          .catch((err) => console.error('[post-call-followup] schedule error:', err))
+      })
+    }
   } catch (error) {
     console.error('Webhook error:', error)
     const errorMessage = error?.message || 'Webhook processing failed'

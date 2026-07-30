@@ -327,6 +327,17 @@ Respond ONLY with valid JSON (no markdown), for example:
     }
   }
 
+  // Post-call follow-up email (async — do not block VAPI response)
+  void import('../../../../server/lib/post-call-followup')
+    .then(({ schedulePostCallFollowUpForLead }) =>
+      schedulePostCallFollowUpForLead(supabase, leadId, {
+        duration_seconds: durationSeconds,
+        outcome: scoreLabel,
+        transcript_summary: null,
+      })
+    )
+    .catch((err) => console.error('[speed-webhook] post-call-followup', err))
+
   return NextResponse.json({
     scored: true,
     score,
