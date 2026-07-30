@@ -44,10 +44,12 @@ export default function BrokerInvoicesPage() {
     try {
       const { data: me } = await supabase
         .from('agents')
-        .select('is_manager')
+        .select('is_manager, is_owner')
         .eq('id', agent!.id)
         .maybeSingle()
-      const manager = Boolean((me as { is_manager?: boolean } | null)?.is_manager)
+      const manager =
+        Boolean((me as { is_manager?: boolean; is_owner?: boolean } | null)?.is_manager) ||
+        Boolean((me as { is_owner?: boolean } | null)?.is_owner)
       setIsManager(manager)
 
       if (manager) {
@@ -144,12 +146,22 @@ export default function BrokerInvoicesPage() {
             Invoices generated when a commission is approved (payable). Manual mark paid / EMI — no gateway yet.
           </p>
         </div>
-        <Link
-          to="/dashboard/commissions"
-          className="text-sm font-medium text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
-        >
-          ← Commissions
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          {isManager && (
+            <Link
+              to="/dashboard/payment-run"
+              className="text-sm font-medium text-blue-700 hover:text-blue-900"
+            >
+              Payment Run →
+            </Link>
+          )}
+          <Link
+            to="/dashboard/commissions"
+            className="text-sm font-medium text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
+          >
+            ← Commissions
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 items-end">

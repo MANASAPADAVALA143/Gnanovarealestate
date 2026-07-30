@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatAed } from '../../lib/broker-invoices'
 import { fetchAdSpendEntries, type AdSpendEntry } from '../../lib/ad-spend'
+import { fetchPaymentRuns } from '../../lib/payment-runs'
 import {
   fetchAdminAuditLog,
   fetchAdminBrokers,
@@ -53,6 +54,11 @@ export default function AdminPage() {
     totalSpend: number
     blendedCpl: number | null
   } | null>(null)
+  const [paymentRunsMonth, setPaymentRunsMonth] = useState<{
+    totalPaid: number
+    runCount: number
+    brokersPaid: number
+  } | null>(null)
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -94,6 +100,29 @@ export default function AdminPage() {
         })
       } catch {
         setAdSpendMonth(null)
+      }
+
+      try {
+        const now = new Date()
+        const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+        const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+        const { runs } = await fetchPaymentRuns()
+        const monthRuns = (runs || []).filter(
+          (r) => r.run_date >= monthStart && r.run_date <= monthEnd
+        )
+        const brokerIds = new Set<string>()
+        for (const r of monthRuns) {
+          for (const item of r.payment_run_items || []) {
+            if (item.broker_agent_id) brokerIds.add(item.broker_agent_id)
+          }
+        }
+        setPaymentRunsMonth({
+          totalPaid: monthRuns.reduce((s, r) => s + (Number(r.total_amount_aed) || 0), 0),
+          runCount: monthRuns.length,
+          brokersPaid: brokerIds.size,
+        })
+      } catch {
+        setPaymentRunsMonth(null)
       }
     } catch (e) {
       console.error(e)
@@ -299,6 +328,27 @@ export default function AdminPage() {
                 className="text-sm font-medium text-blue-700 hover:text-blue-900 whitespace-nowrap"
               >
                 View full attribution →
+              </Link>
+            </div>
+          )}
+
+          {paymentRunsMonth && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-slate-900">Payment Runs — This Month</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Paid out: {formatAed(paymentRunsMonth.totalPaid)}
+                  {' · '}
+                  Runs: {paymentRunsMonth.runCount}
+                  {' · '}
+                  Brokers paid: {paymentRunsMonth.brokersPaid}
+                </p>
+              </div>
+              <Link
+                to="/dashboard/payment-run"
+                className="text-sm font-medium text-blue-700 hover:text-blue-900 whitespace-nowrap"
+              >
+                View payment runs →
               </Link>
             </div>
           )}

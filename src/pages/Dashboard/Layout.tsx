@@ -28,6 +28,7 @@ import {
   FileText,
   Shield,
   TrendingUp,
+  CreditCard,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -52,6 +53,9 @@ export default function DashboardLayout() {
     { name: 'Deals', href: '/dashboard/deals', icon: Handshake },
     { name: 'Commissions', href: '/dashboard/commissions', icon: Banknote },
     { name: 'Broker Invoices', href: '/dashboard/broker-invoices', icon: FileText },
+    ...(showAdminNav
+      ? [{ name: 'Payment Run', href: '/dashboard/payment-run', icon: CreditCard }]
+      : []),
     { name: 'Tasks', href: '/dashboard/tasks', icon: ListTodo },
     { name: 'Inbox', href: '/dashboard/inbox', icon: MessageCircle },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },

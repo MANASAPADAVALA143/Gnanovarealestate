@@ -26,6 +26,7 @@ import TasksPage from './src/pages/Dashboard/Tasks'
 import DealsPage from './src/pages/Dashboard/Deals'
 import CommissionsPage from './src/pages/Dashboard/Commissions'
 import BrokerInvoicesPage from './src/pages/Dashboard/BrokerInvoices'
+import PaymentRunPage from './src/pages/Dashboard/PaymentRun'
 import InboxPage from './src/pages/Dashboard/Inbox'
 import VoiceCallCenter from './pages/VoiceCallCenter'
 import PrivacyPolicy from './src/pages/PrivacyPolicy'
@@ -113,6 +114,14 @@ function App() {
             <Route path="deals" element={<DealsPage />} />
             <Route path="commissions" element={<CommissionsPage />} />
             <Route path="broker-invoices" element={<BrokerInvoicesPage />} />
+            <Route
+              path="payment-run"
+              element={
+                <ProtectedRoute requireManager>
+                  <PaymentRunPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="inbox" element={<InboxPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="calls" element={<CallsPage />} />
