@@ -14,13 +14,18 @@ import {
   BedDouble,
   Bath,
   Maximize,
-  PenTool
+  PenTool,
+  Eye
 } from 'lucide-react'
 import {
   computePricePerSqm,
   DISTRICT_STAGE_OPTIONS,
   formatPricePerSqm,
 } from '../../lib/uae-property'
+import { fetchPaymentPlanTeasers } from '../../lib/property-payment-plans'
+import PropertyDetailsModal from '../../../components/properties/PropertyDetailsModal'
+import type { Property as DetailProperty } from '../../../types/property'
+import { supabase } from '../../lib/supabase'
 
 interface Property {
   id: string
@@ -60,6 +65,9 @@ export default function PropertiesManagement() {
   const [freeholdOnly, setFreeholdOnly] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [planTeasers, setPlanTeasers] = useState<Record<string, string>>({})
+  const [detailProperty, setDetailProperty] = useState<DetailProperty | null>(null)
+  const [isManager, setIsManager] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{
     total: number
     success: number
@@ -73,6 +81,49 @@ export default function PropertiesManagement() {
   useEffect(() => {
     fetchProperties()
   }, [agent])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadManager() {
+      if (!agent?.id) {
+        setIsManager(false)
+        return
+      }
+      const { data } = await supabase
+        .from('agents')
+        .select('is_manager, is_owner')
+        .eq('id', agent.id)
+        .maybeSingle()
+      if (cancelled) return
+      setIsManager(
+        Boolean((data as { is_manager?: boolean } | null)?.is_manager) ||
+          Boolean((data as { is_owner?: boolean } | null)?.is_owner)
+      )
+    }
+    void loadManager()
+    return () => {
+      cancelled = true
+    }
+  }, [agent?.id])
+
+  useEffect(() => {
+    const ids = properties.map((p) => p.id)
+    if (ids.length === 0) {
+      setPlanTeasers({})
+      return
+    }
+    let cancelled = false
+    fetchPaymentPlanTeasers(ids)
+      .then(({ teasers }) => {
+        if (!cancelled) setPlanTeasers(teasers)
+      })
+      .catch(() => {
+        if (!cancelled) setPlanTeasers({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [properties])
 
   useEffect(() => {
     let filtered = properties
@@ -510,6 +561,11 @@ export default function PropertiesManagement() {
                       <p className="text-sm font-semibold text-gray-900">
                         AED {property.price?.toLocaleString()}
                       </p>
+                      {planTeasers[property.id] && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          📋 {planTeasers[property.id]} payment plan
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm text-gray-700">
@@ -561,6 +617,14 @@ export default function PropertiesManagement() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => setDetailProperty(property as DetailProperty)}
+                          className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg flex items-center gap-1.5 transition-all"
+                          title="View details & payment plan"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </button>
                         <button
                           onClick={() => handleWriteListing(property)}
                           className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-lg flex items-center gap-1.5 transition-all"
@@ -625,6 +689,24 @@ export default function PropertiesManagement() {
           agentId={agent?.id}
         />
       )}
+
+      <PropertyDetailsModal
+        open={Boolean(detailProperty)}
+        property={detailProperty}
+        isManager={isManager}
+        onClose={() => setDetailProperty(null)}
+        onBookViewing={() => {}}
+        onSendWhatsApp={() => {}}
+        onShare={(id) => {
+          void navigator.clipboard?.writeText(`${window.location.origin}/dashboard/properties`)
+          console.log('Share property', id)
+        }}
+        onContactAgent={() => {}}
+        onPaymentPlanChanged={() => {
+          const ids = properties.map((p) => p.id)
+          void fetchPaymentPlanTeasers(ids).then(({ teasers }) => setPlanTeasers(teasers))
+        }}
+      />
     </div>
   )
 }

@@ -9,6 +9,8 @@ type PropertyCardProps = {
   property: Property
   onViewDetails: (id: string) => void
   onBookViewing: (id: string) => void
+  /** e.g. "30/40/30" from first 3 milestones — omit if none */
+  paymentPlanTeaser?: string | null
 }
 
 export function PropertyCardSkeleton() {
@@ -32,6 +34,7 @@ export default function PropertyCard({
   property,
   onViewDetails,
   onBookViewing,
+  paymentPlanTeaser,
 }: PropertyCardProps) {
   const mainPhoto =
     property.photos && property.photos.length > 0
@@ -87,6 +90,11 @@ export default function PropertyCard({
         <div className="absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold bg-black/60 text-white">
           {price}
         </div>
+        {paymentPlanTeaser && (
+          <div className="absolute bottom-3 left-3 rounded-md bg-black/55 px-2 py-1 text-[11px] font-medium text-slate-100">
+            📋 {paymentPlanTeaser} payment plan
+          </div>
+        )}
         <div
           className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}
         >
