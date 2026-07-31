@@ -4,15 +4,34 @@
  * Handles property CRUD operations, CSV upload, and embedding generation
  */
 
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { generatePropertyEmbedding, generateBatchEmbeddings } from '../lib/rag-search'
 
-// Get Supabase client - handles both lazy proxy and direct client
-function getClient() {
+/**
+ * Express/webhook-server must use the service role — the Vite anon client has no JWT,
+ * so RLS on properties INSERT (agent_id = auth.uid()) always fails from this path.
+ */
+function getDb(): SupabaseClient {
+  const url =
+    (typeof process !== 'undefined' &&
+      (process.env.SUPABASE_URL ||
+        process.env.NEXT_PUBLIC_SUPABASE_URL ||
+        process.env.VITE_SUPABASE_URL)) ||
+    ''
+  const serviceKey =
+    (typeof process !== 'undefined' &&
+      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)) ||
+    ''
+
+  if (url && serviceKey) {
+    return createClient(url, serviceKey)
+  }
+
   if (!supabase) {
     throw new Error('Supabase client not initialized')
   }
-  return supabase
+  return supabase as unknown as SupabaseClient
 }
 
 export interface Property {
@@ -168,7 +187,7 @@ export async function uploadPropertiesFromCSV(
         property.embedding = null
 
         // Insert property
-        const { error } = await supabase
+        const { error } = await getDb()
           .from('properties')
           .insert(property)
 
@@ -209,7 +228,7 @@ export async function getProperties(filters?: {
   status?: string
 }): Promise<Property[]> {
   try {
-    let query = supabase.from('properties').select('*')
+    let query = getDb().from('properties').select('*')
 
     if (filters?.agentId) {
       query = query.eq('agent_id', filters.agentId)
@@ -253,7 +272,7 @@ export async function getProperties(filters?: {
  */
 export async function deleteProperty(propertyId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
+    const { error } = await getDb()
       .from('properties')
       .delete()
       .eq('id', propertyId)
@@ -299,7 +318,7 @@ export async function createProperty(property: Property, agentId?: string): Prom
       console.warn(`⚠️ Could not generate embedding: ${embError.message}`)
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getDb()
       .from('properties')
       .insert(row)
       .select()

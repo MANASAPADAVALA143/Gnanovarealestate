@@ -15,7 +15,8 @@ import {
   Bath,
   Maximize,
   PenTool,
-  Eye
+  Eye,
+  X,
 } from 'lucide-react'
 import {
   computePricePerSqm,
@@ -722,6 +723,8 @@ function AddPropertyModal({
   agentId?: string
 }) {
   const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const addressRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     title: '',
     address: '',
@@ -744,15 +747,32 @@ function AddPropertyModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    
+    setFormError(null)
+
+    const missing: string[] = []
+    if (!formData.address.trim()) missing.push('Address')
+    if (!formData.city.trim()) missing.push('City')
+    if (!formData.price.trim()) missing.push('Price (AED)')
+    if (!formData.bedrooms.trim()) missing.push('Bedrooms')
+    if (!formData.bathrooms.trim()) missing.push('Bathrooms')
+
+    if (missing.length > 0) {
+      setFormError(`Please fill in: ${missing.join(', ')}`)
+      if (!formData.address.trim()) {
+        addressRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        addressRef.current?.focus()
+      }
+      return
+    }
+
     try {
       setLoading(true)
 
       const property = {
         title: formData.title,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim() || formData.city.trim(),
         country: formData.country,
         price: parseFloat(formData.price),
         bedrooms: parseInt(formData.bedrooms),
@@ -761,7 +781,7 @@ function AddPropertyModal({
         property_type: formData.property_type,
         amenities: formData.amenities ? formData.amenities.split(',').map(a => a.trim()) : [],
         description: formData.description,
-        virtual_tour_url: formData.virtual_tour_url || undefined,
+        virtual_tour_url: formData.virtual_tour_url.trim() || undefined,
         handover_quarter: formData.handover_quarter.trim() || null,
         is_freehold: formData.is_freehold,
         district_stage: formData.district_stage
@@ -795,11 +815,28 @@ function AddPropertyModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Add New Property</h2>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50">
+      <div className="flex min-h-full items-start justify-center p-4 sm:p-6">
+        <div className="relative my-4 w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <h2 className="text-2xl font-bold text-gray-900">Add New Property</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {formError && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {formError}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -813,14 +850,18 @@ function AddPropertyModal({
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Address * <span className="font-normal text-gray-500">(community / tower / street)</span>
+              </label>
               <input
+                ref={addressRef}
                 type="text"
-                required
                 value={formData.address}
                 onChange={(e) => setFormData({...formData, address: e.target.value})}
-                placeholder="123 Main St"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g. Marina Gate Tower 1, Dubai Marina"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  formError?.includes('Address') ? 'border-amber-500' : 'border-gray-300'
+                }`}
               />
             </div>
 
@@ -828,7 +869,6 @@ function AddPropertyModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
               <input
                 type="text"
-                required
                 value={formData.city}
                 onChange={(e) => setFormData({...formData, city: e.target.value})}
                 placeholder="Dubai"
@@ -851,7 +891,6 @@ function AddPropertyModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">Price (AED) *</label>
               <input
                 type="number"
-                required
                 value={formData.price}
                 onChange={(e) => setFormData({...formData, price: e.target.value})}
                 placeholder="500000"
@@ -881,7 +920,6 @@ function AddPropertyModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms *</label>
               <input
                 type="number"
-                required
                 value={formData.bedrooms}
                 onChange={(e) => setFormData({...formData, bedrooms: e.target.value})}
                 placeholder="3"
@@ -894,7 +932,6 @@ function AddPropertyModal({
               <input
                 type="number"
                 step="0.5"
-                required
                 value={formData.bathrooms}
                 onChange={(e) => setFormData({...formData, bathrooms: e.target.value})}
                 placeholder="2.5"
@@ -995,7 +1032,7 @@ function AddPropertyModal({
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Virtual Tour URL</label>
               <input
-                type="url"
+                type="text"
                 value={formData.virtual_tour_url}
                 onChange={(e) => setFormData({...formData, virtual_tour_url: e.target.value})}
                 placeholder="https://example.com/tour"
@@ -1022,6 +1059,7 @@ function AddPropertyModal({
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   )
