@@ -50,6 +50,13 @@ export interface Property {
 
   // Arbitrary extra metadata stored as jsonb in the DB
   metadata: Record<string, any> | null
+
+  /** Generated: price / sqft (size stored as sqft, labeled sqm in UI) */
+  price_per_sqm?: number | null
+  handover_quarter?: string | null
+  is_freehold?: boolean | null
+  district_stage?: 1 | 2 | 3 | 4 | null
+  developer_track_record?: string | null
 }
 
 // Filters for text + structured search over properties

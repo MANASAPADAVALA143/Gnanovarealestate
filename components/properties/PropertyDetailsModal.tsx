@@ -9,6 +9,11 @@ import {
 } from '../ui/dialog'
 import type { Property, PropertySearchResult } from '../../types/property'
 import PropertyCard from './PropertyCard'
+import {
+  computePricePerSqm,
+  formatPricePerSqm,
+  getDistrictStageMeta,
+} from '../../src/lib/uae-property'
 
 type PropertyDetailsModalProps = {
   open: boolean
@@ -59,6 +64,12 @@ export default function PropertyDetailsModal({
   const sqft = property.sqft ? `${property.sqft.toLocaleString()} sqm` : 'Size N/A'
 
   const amenities = property.amenities ?? []
+
+  const pricePerSqmLabel = formatPricePerSqm(
+    property.price_per_sqm ?? computePricePerSqm(property.price, property.sqft)
+  )
+  const districtMeta = getDistrictStageMeta(property.district_stage ?? null)
+  const isFreehold = property.is_freehold !== false
 
   const statusLabel =
     property.status === 'off_market'
@@ -139,6 +150,40 @@ export default function PropertyDetailsModal({
                 <p className="text-xs text-slate-500 mt-1">
                   {beds} bd • {baths} ba • {sqft}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {pricePerSqmLabel && (
+                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                      {pricePerSqmLabel}
+                    </span>
+                  )}
+                  {property.handover_quarter?.trim() && (
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-800">
+                      {property.handover_quarter.trim()}
+                    </span>
+                  )}
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      isFreehold
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {isFreehold ? '✓ Freehold' : 'Leasehold'}
+                  </span>
+                  {districtMeta && (
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${districtMeta.badgeClass}`}
+                    >
+                      {districtMeta.shortLabel}
+                    </span>
+                  )}
+                </div>
+                {property.developer_track_record?.trim() && (
+                  <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                    <span className="font-semibold text-slate-800">Developer: </span>
+                    {property.developer_track_record.trim()}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">

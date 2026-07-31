@@ -9,10 +9,10 @@ export default function Pricing({ onBookDemo }: PricingProps) {
   const plans = [
     {
       name: 'Starter',
-      price: '$1,800',
+      price: 'AED 2,500',
       period: '/month',
       features: [
-        'LeadScreenerAI',
+        'AI Voice Qualification',
         'Up to 100 leads/month',
         'SMS + Email automation',
         'Basic analytics'
@@ -21,10 +21,10 @@ export default function Pricing({ onBookDemo }: PricingProps) {
     },
     {
       name: 'Professional',
-      price: '$3,500',
+      price: 'AED 5,500',
       period: '/month',
       features: [
-        'All 3 products',
+        'All core CRM features',
         'Unlimited leads',
         'WhatsApp integration',
         'Priority support',
@@ -35,7 +35,7 @@ export default function Pricing({ onBookDemo }: PricingProps) {
     {
       name: 'Enterprise',
       price: 'Custom',
-      period: 'pricing',
+      period: '',
       features: [
         '5-20 agents',
         'Custom integrations',

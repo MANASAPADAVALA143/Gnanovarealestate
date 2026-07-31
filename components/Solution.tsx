@@ -1,45 +1,42 @@
-import { Bot, Home, TrendingUp, CheckCircle, Sparkles } from 'lucide-react';
+import { Bot, GitBranch, Receipt, CheckCircle, Sparkles } from 'lucide-react';
 
 export default function Solution() {
   const products = [
     {
       icon: <Bot size={48} />,
-      name: 'LeadScreenerAI',
+      name: 'AI Voice Qualification',
       gradient: 'from-blue-500 to-cyan-500',
       bgGradient: 'from-blue-50 to-cyan-50',
       features: [
-        'Qualifies every lead in 5 minutes',
-        'Sends personalized property matches via SMS',
-        'Books appointments automatically'
+        'Priya calls new leads within 60 seconds',
+        'Qualifies budget, timeline, and location',
+        'Books viewings automatically'
       ],
-      price: '$1,800',
       badge: 'Most Popular'
     },
     {
-      icon: <Home size={48} />,
-      name: 'PropertyMatchBot',
+      icon: <GitBranch size={48} />,
+      name: 'Smart Deal Pipeline',
       gradient: 'from-purple-500 to-pink-500',
       bgGradient: 'from-purple-50 to-pink-50',
       features: [
-        'Matches new listings to buyer database',
-        'Instant SMS alerts to qualified buyers',
-        'AI-generated property descriptions'
+        'Viewing → Offer → Booking → MOU → Closed',
+        'Stage tracking for every UAE deal',
+        'Notes and activity on each card'
       ],
-      price: '$1,200',
-      badge: 'Best Value'
+      badge: 'Core CRM'
     },
     {
-      icon: <TrendingUp size={48} />,
-      name: 'DealPipelineAI',
+      icon: <Receipt size={48} />,
+      name: 'Broker Commission Manager',
       gradient: 'from-emerald-500 to-teal-500',
       bgGradient: 'from-emerald-50 to-teal-50',
       features: [
-        'Tracks deals from inquiry to closing',
-        'Auto-sends stage-specific content',
-        'Monthly performance reports'
+        'Approve commissions and issue invoices',
+        'Bulk payment runs with one reference',
+        'Printable payment run summaries'
       ],
-      price: '$1,500',
-      badge: 'Enterprise Ready'
+      badge: 'UAE Ready'
     }
   ];
 
@@ -57,7 +54,7 @@ export default function Solution() {
             Your Complete AI Real Estate Team
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Three powerful AI assistants working 24/7 to transform your business
+            Three powerful capabilities working 24/7 to transform your brokerage
           </p>
         </div>
 
@@ -93,12 +90,8 @@ export default function Solution() {
                 </ul>
 
                 <div className="border-t border-gray-200 pt-6">
-                  <div className="flex items-baseline mb-4">
-                    <span className="text-4xl font-bold text-gray-900">{product.price}</span>
-                    <span className="text-gray-500 ml-2">/month</span>
-                  </div>
                   <button className={`w-full px-6 py-3 bg-gradient-to-r ${product.gradient} text-white font-bold rounded-xl hover:shadow-lg transition transform hover:scale-105`}>
-                    Get Started
+                    Book a Demo
                   </button>
                 </div>
               </div>
@@ -109,9 +102,9 @@ export default function Solution() {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-gray-600 mb-4">Need all three? Get our complete package and save 20%</p>
+          <p className="text-gray-600 mb-4">One CRM for voice, deals, and broker payouts</p>
           <button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl hover:shadow-2xl transition transform hover:scale-105">
-            View Complete Package
+            View Pricing
           </button>
         </div>
       </div>

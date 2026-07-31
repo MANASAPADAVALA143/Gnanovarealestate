@@ -7,7 +7,7 @@ export default function FAQ() {
   const faqs = [
     {
       question: 'Will this work with my existing CRM?',
-      answer: 'Yes! Gnanova Real Estate integrates seamlessly with all major CRMs including Salesforce, HubSpot, Follow Up Boss, Zillow Premier Agent, and many more. Our team will handle the integration during setup.'
+      answer: 'Gnanova is your all-in-one CRM. It connects natively with Property Finder, Bayut, WhatsApp Business, and Meta Ads — no third-party CRM needed.'
     },
     {
       question: 'How long does setup take?',

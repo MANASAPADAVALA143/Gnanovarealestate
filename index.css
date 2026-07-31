@@ -36,6 +36,95 @@
   }
 }
 
+/* ── Gnanova public landing ── */
+.gnanova-landing {
+  --gn-bg-primary: #0d1b2a;
+  --gn-bg-card: #1e293b;
+  --gn-bg-card-hover: #243447;
+  --gn-accent-purple: #7c3aed;
+  --gn-accent-cyan: #06b6d4;
+  --gn-accent-purple-light: #a78bfa;
+  --gn-gold: #f59e0b;
+  --gn-text-primary: #ffffff;
+  --gn-text-secondary: #94a3b8;
+  --gn-text-muted: #64748b;
+  --gn-border: rgba(255, 255, 255, 0.08);
+  --gn-gradient: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--gn-bg-primary);
+  color: var(--gn-text-primary);
+}
+
+.gnanova-landing h1,
+.gnanova-landing h2,
+.gnanova-landing h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.gnanova-landing .gn-gradient-text {
+  background: var(--gn-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.gnanova-landing .gn-btn-gradient {
+  background: var(--gn-gradient);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gnanova-landing .gn-btn-gradient:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 40px rgba(124, 58, 237, 0.5);
+}
+
+.gnanova-landing .gn-card {
+  background: var(--gn-bg-card);
+  border: 1px solid var(--gn-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.gnanova-landing .gn-card:hover {
+  border-color: rgba(124, 58, 237, 0.4);
+  transform: translateY(-4px);
+}
+
+.gnanova-landing .fade-in-section {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.gnanova-landing .fade-in-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes gn-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.gnanova-landing .gn-orb-float {
+  animation: gn-float 6s ease-in-out infinite;
+}
+
+.gnanova-landing .gn-orb-float-reverse {
+  animation: gn-float 6s ease-in-out infinite reverse;
+}
+
 @keyframes gradient-shift {
   0%, 100% {
     background-position: 0% 50%;

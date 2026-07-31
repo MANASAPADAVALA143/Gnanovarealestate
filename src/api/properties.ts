@@ -35,6 +35,12 @@ export interface Property {
   virtual_tour_url?: string
   status?: string
   embedding?: number[]
+  /** Read-only generated column — never send on insert */
+  price_per_sqm?: number | null
+  handover_quarter?: string | null
+  is_freehold?: boolean | null
+  district_stage?: 1 | 2 | 3 | 4 | null
+  developer_track_record?: string | null
 }
 
 /**
@@ -267,20 +273,35 @@ export async function deleteProperty(propertyId: string): Promise<boolean> {
  */
 export async function createProperty(property: Property, agentId?: string): Promise<string> {
   try {
-    if (agentId) {
-      property.agent_id = agentId
+    const raw = property as Property & { agentId?: string }
+    const {
+      agentId: _agentIdCamel,
+      price_per_sqm: _generated,
+      embedding: _emb,
+      id: _id,
+      ...rest
+    } = raw
+
+    const row: Record<string, unknown> = {
+      ...rest,
+      agent_id: agentId || rest.agent_id || undefined,
+      handover_quarter: rest.handover_quarter?.trim() || null,
+      developer_track_record: rest.developer_track_record?.trim() || null,
+      is_freehold: rest.is_freehold ?? true,
+      district_stage: rest.district_stage ?? null,
     }
+    delete row.agentId
 
     // Generate embedding
     try {
-      property.embedding = await generatePropertyEmbedding(property)
+      row.embedding = await generatePropertyEmbedding(rest as Property)
     } catch (embError: any) {
       console.warn(`⚠️ Could not generate embedding: ${embError.message}`)
     }
 
     const { data, error } = await supabase
       .from('properties')
-      .insert(property)
+      .insert(row)
       .select()
       .single()
 

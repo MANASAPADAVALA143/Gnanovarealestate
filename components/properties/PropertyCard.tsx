@@ -1,4 +1,9 @@
 import type { Property } from '../../types/property'
+import {
+  computePricePerSqm,
+  formatPricePerSqm,
+  getDistrictStageMeta,
+} from '../../src/lib/uae-property'
 
 type PropertyCardProps = {
   property: Property
@@ -46,6 +51,12 @@ export default function PropertyCard({
 
   const amenities = property.amenities ?? []
   const keyAmenities = amenities.slice(0, 3)
+
+  const pricePerSqmLabel = formatPricePerSqm(
+    property.price_per_sqm ?? computePricePerSqm(property.price, property.sqft)
+  )
+  const districtMeta = getDistrictStageMeta(property.district_stage ?? null)
+  const isFreehold = property.is_freehold !== false
 
   const rawStatus = property.status && String(property.status).trim() ? String(property.status) : 'unknown'
 
@@ -101,6 +112,35 @@ export default function PropertyCard({
           </span>
           <span className="h-1 w-1 rounded-full bg-slate-300" />
           <span>{sqft}</span>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {pricePerSqmLabel && (
+            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              {pricePerSqmLabel}
+            </span>
+          )}
+          {property.handover_quarter?.trim() && (
+            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
+              {property.handover_quarter.trim()}
+            </span>
+          )}
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              isFreehold
+                ? 'bg-emerald-100 text-emerald-800'
+                : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {isFreehold ? '✓ Freehold' : 'Leasehold'}
+          </span>
+          {districtMeta && (
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${districtMeta.badgeClass}`}
+            >
+              {districtMeta.shortLabel}
+            </span>
+          )}
         </div>
 
         {keyAmenities.length > 0 && (
