@@ -102,12 +102,12 @@ export default function DashboardLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-full w-64 flex-col bg-slate-900 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-slate-800">
+        <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-800 px-6">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">G</span>
@@ -122,21 +122,25 @@ export default function DashboardLayout() {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        {/* Navigation — scrollable so items below Campaigns stay reachable */}
+        <nav className="flex-1 space-y-1 overflow-y-auto overscroll-contain px-4 py-4">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href
+            const isActive =
+              item.href === '/dashboard'
+                ? location.pathname === '/dashboard'
+                : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)
             return (
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={() => setSidebarOpen(false)}
                 className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-blue-600 text-white'
                     : 'text-slate-200 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <item.icon className="w-5 h-5" />
+                <item.icon className="w-5 h-5 flex-shrink-0" />
                 <span className="font-medium">{item.name}</span>
               </Link>
             )
@@ -145,13 +149,13 @@ export default function DashboardLayout() {
             href={`${nextAppOrigin}/dashboard/leads/scored`}
             className="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors text-slate-200 hover:text-white hover:bg-slate-800"
           >
-            <Flame className="w-5 h-5" />
+            <Flame className="w-5 h-5 flex-shrink-0" />
             <span className="font-medium">Hot Leads 🔥</span>
           </a>
         </nav>
 
         {/* Agent Profile */}
-        <div className="border-t border-slate-800 p-4">
+        <div className="flex-shrink-0 border-t border-slate-800 p-4">
           <div className="flex items-center space-x-3 px-3 py-2 mb-2">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">

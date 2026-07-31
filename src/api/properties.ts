@@ -51,6 +51,7 @@ export interface Property {
   amenities?: string[] | string
   description?: string
   photos?: string[]
+  image_url?: string | null
   virtual_tour_url?: string
   status?: string
   embedding?: number[]
@@ -60,6 +61,10 @@ export interface Property {
   is_freehold?: boolean | null
   district_stage?: 1 | 2 | 3 | 4 | null
   developer_track_record?: string | null
+  completion_status?: 'off_plan' | 'ready' | 'under_construction' | null
+  service_charge?: number | null
+  rera_permit?: string | null
+  parking_spaces?: number | null
 }
 
 /**
@@ -308,8 +313,22 @@ export async function createProperty(property: Property, agentId?: string): Prom
       developer_track_record: rest.developer_track_record?.trim() || null,
       is_freehold: rest.is_freehold ?? true,
       district_stage: rest.district_stage ?? null,
+      image_url: rest.image_url?.trim?.() || rest.image_url || null,
+      completion_status: rest.completion_status || null,
+      service_charge:
+        rest.service_charge != null && rest.service_charge !== ('' as unknown)
+          ? Number(rest.service_charge)
+          : null,
+      rera_permit: rest.rera_permit?.trim?.() || rest.rera_permit || null,
+      parking_spaces:
+        rest.parking_spaces != null && rest.parking_spaces !== ('' as unknown)
+          ? Number(rest.parking_spaces)
+          : null,
     }
     delete row.agentId
+    if (row.image_url && (!row.photos || !(row.photos as string[]).length)) {
+      row.photos = [row.image_url as string]
+    }
 
     // Generate embedding
     try {

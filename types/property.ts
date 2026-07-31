@@ -34,6 +34,8 @@ export interface Property {
   amenities: string[] | null
   description: string | null
   photos: string[] | null
+  /** Primary listing photo (preferred over photos[0]) */
+  image_url?: string | null
   virtual_tour_url: string | null
 
   listing_agent_name: string | null
@@ -57,6 +59,10 @@ export interface Property {
   is_freehold?: boolean | null
   district_stage?: 1 | 2 | 3 | 4 | null
   developer_track_record?: string | null
+  completion_status?: 'off_plan' | 'ready' | 'under_construction' | null
+  service_charge?: number | null
+  rera_permit?: string | null
+  parking_spaces?: number | null
 }
 
 // Filters for text + structured search over properties

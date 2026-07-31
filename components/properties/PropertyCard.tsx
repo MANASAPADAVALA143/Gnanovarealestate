@@ -1,7 +1,10 @@
+import { Building2 } from 'lucide-react'
 import type { Property } from '../../types/property'
 import {
+  capitalizeWords,
   computePricePerSqm,
   formatPricePerSqm,
+  getCompletionStatusMeta,
   getDistrictStageMeta,
 } from '../../src/lib/uae-property'
 
@@ -30,6 +33,38 @@ export function PropertyCardSkeleton() {
   )
 }
 
+function PropertyImage({
+  src,
+  alt,
+  className = 'h-40',
+}: {
+  src: string | null
+  alt: string
+  className?: string
+}) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full object-cover ${className}`}
+      />
+    )
+  }
+  return (
+    <div
+      className={`flex w-full flex-col items-center justify-center gap-2 ${className}`}
+      style={{
+        background:
+          'linear-gradient(135deg, rgba(124,58,237,0.1) 0%, rgba(6,182,212,0.05) 100%)',
+      }}
+    >
+      <Building2 className="h-12 w-12" style={{ color: 'rgba(124,58,237,0.3)' }} />
+      <span className="text-xs text-slate-400">No photo yet</span>
+    </div>
+  )
+}
+
 export default function PropertyCard({
   property,
   onViewDetails,
@@ -37,9 +72,8 @@ export default function PropertyCard({
   paymentPlanTeaser,
 }: PropertyCardProps) {
   const mainPhoto =
-    property.photos && property.photos.length > 0
-      ? property.photos[0]
-      : 'https://via.placeholder.com/600x400?text=Property'
+    property.image_url ||
+    (property.photos && property.photos.length > 0 ? property.photos[0] : null)
 
   const price =
     property.price !== null && property.price !== undefined
@@ -47,6 +81,9 @@ export default function PropertyCard({
       : 'Price on request'
 
   const addressLine = property.address || 'Address not available'
+  const locationLine = [capitalizeWords(property.city), capitalizeWords(property.state)]
+    .filter(Boolean)
+    .join(', ')
 
   const beds = property.bedrooms ?? 'N/A'
   const baths = property.bathrooms ?? 'N/A'
@@ -59,6 +96,7 @@ export default function PropertyCard({
     property.price_per_sqm ?? computePricePerSqm(property.price, property.sqft)
   )
   const districtMeta = getDistrictStageMeta(property.district_stage ?? null)
+  const completionMeta = getCompletionStatusMeta(property.completion_status ?? null)
   const isFreehold = property.is_freehold !== false
 
   const rawStatus = property.status && String(property.status).trim() ? String(property.status) : 'unknown'
@@ -81,12 +119,8 @@ export default function PropertyCard({
 
   return (
     <div className="group flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden transition hover:-translate-y-1 hover:shadow-lg">
-      <div className="relative h-44 w-full overflow-hidden">
-        <img
-          src={mainPhoto}
-          alt={addressLine}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+      <div className="relative h-40 w-full overflow-hidden">
+        <PropertyImage src={mainPhoto} alt={addressLine} className="h-40 transition-transform duration-300 group-hover:scale-105" />
         <div className="absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold bg-black/60 text-white">
           {price}
         </div>
@@ -105,9 +139,7 @@ export default function PropertyCard({
       <div className="flex flex-1 flex-col p-4 gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-900 truncate">{addressLine}</p>
-          <p className="text-xs text-slate-500">
-            {[property.city, property.state, property.zip_code].filter(Boolean).join(', ')}
-          </p>
+          <p className="text-xs text-slate-500">{locationLine || '—'}</p>
         </div>
 
         <div className="flex items-center gap-3 text-xs text-slate-600">
@@ -123,6 +155,13 @@ export default function PropertyCard({
         </div>
 
         <div className="flex flex-wrap gap-1.5">
+          {completionMeta && (
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${completionMeta.badgeClass}`}
+            >
+              {completionMeta.label}
+            </span>
+          )}
           {pricePerSqmLabel && (
             <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               {pricePerSqmLabel}
@@ -184,4 +223,3 @@ export default function PropertyCard({
     </div>
   )
 }
-

@@ -51,3 +51,42 @@ export function computePricePerSqm(
   if (price == null || sqm == null || !(Number(sqm) > 0) || !(Number(price) > 0)) return null
   return Number(price) / Number(sqm)
 }
+
+/** Display-only: "dubai" → "Dubai" */
+export function capitalizeWords(str: string | null | undefined): string {
+  if (!str || !String(str).trim()) return ''
+  return String(str)
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ')
+}
+
+export type CompletionStatus = 'off_plan' | 'ready' | 'under_construction'
+
+export const COMPLETION_STATUS_OPTIONS: Array<{
+  value: CompletionStatus
+  label: string
+  badgeClass: string
+}> = [
+  {
+    value: 'off_plan',
+    label: 'Off-Plan',
+    badgeClass: 'bg-orange-100 text-orange-800 border-orange-200',
+  },
+  {
+    value: 'ready',
+    label: 'Ready to Move',
+    badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  },
+  {
+    value: 'under_construction',
+    label: 'Under Construction',
+    badgeClass: 'bg-blue-100 text-blue-800 border-blue-200',
+  },
+]
+
+export function getCompletionStatusMeta(status: string | null | undefined) {
+  if (!status) return null
+  return COMPLETION_STATUS_OPTIONS.find((o) => o.value === status) ?? null
+}

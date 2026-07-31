@@ -17,10 +17,14 @@ import {
   PenTool,
   Eye,
   X,
+  ImagePlus,
+  Loader2,
 } from 'lucide-react'
 import {
   computePricePerSqm,
+  capitalizeWords,
   DISTRICT_STAGE_OPTIONS,
+  COMPLETION_STATUS_OPTIONS,
   formatPricePerSqm,
 } from '../../lib/uae-property'
 import { fetchPaymentPlanTeasers } from '../../lib/property-payment-plans'
@@ -43,6 +47,7 @@ interface Property {
   amenities?: string[]
   description?: string
   photos?: string[]
+  image_url?: string | null
   virtual_tour_url?: string
   status: string
   embedding?: number[]
@@ -52,6 +57,10 @@ interface Property {
   is_freehold?: boolean | null
   district_stage?: 1 | 2 | 3 | 4 | null
   developer_track_record?: string | null
+  completion_status?: 'off_plan' | 'ready' | 'under_construction' | null
+  service_charge?: number | null
+  rera_permit?: string | null
+  parking_spaces?: number | null
 }
 
 export default function PropertiesManagement() {
@@ -547,16 +556,37 @@ export default function PropertiesManagement() {
                 paginatedProperties.map((property) => (
                   <tr key={property.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {property.title || property.address}
-                        </p>
-                        <p className="text-xs text-gray-500">{property.property_type || 'N/A'}</p>
+                      <div className="flex items-center gap-3">
+                        {(property.image_url || property.photos?.[0]) ? (
+                          <img
+                            src={property.image_url || property.photos![0]}
+                            alt=""
+                            className="h-12 w-16 flex-shrink-0 rounded-md object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="flex h-12 w-16 flex-shrink-0 items-center justify-center rounded-md"
+                            style={{
+                              background:
+                                'linear-gradient(135deg, rgba(124,58,237,0.1) 0%, rgba(6,182,212,0.05) 100%)',
+                            }}
+                          >
+                            <Home className="h-5 w-5 text-violet-300" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {property.title || property.address}
+                          </p>
+                          <p className="text-xs text-gray-500">{property.property_type || 'N/A'}</p>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="text-sm text-gray-900">{property.city}</p>
-                      <p className="text-xs text-gray-500">{property.state || property.country}</p>
+                      <p className="text-sm text-gray-900">{capitalizeWords(property.city)}</p>
+                      <p className="text-xs text-gray-500">
+                        {capitalizeWords(property.state) || property.country}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-semibold text-gray-900">
@@ -723,8 +753,12 @@ function AddPropertyModal({
   agentId?: string
 }) {
   const [loading, setLoading] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const addressRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     address: '',
@@ -743,7 +777,46 @@ function AddPropertyModal({
     is_freehold: true,
     district_stage: '' as '' | '1' | '2' | '3' | '4',
     developer_track_record: '',
+    completion_status: '' as '' | 'off_plan' | 'ready' | 'under_construction',
+    service_charge: '',
+    rera_permit: '',
+    parking_spaces: '',
   })
+
+  function clearImage() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function onImageSelected(file: File | null) {
+    if (!file) return
+    const okTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!okTypes.includes(file.type)) {
+      setFormError('Please choose a JPG, PNG, or WebP image')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setFormError('Image must be 5MB or smaller')
+      return
+    }
+    setFormError(null)
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  async function uploadPropertyImage(file: File): Promise<string> {
+    const ext = file.name.split('.').pop() || 'jpg'
+    const path = `properties/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { data, error } = await supabase.storage
+      .from('property-images')
+      .upload(path, file, { contentType: file.type, upsert: false })
+    if (error) throw error
+    const { data: urlData } = supabase.storage.from('property-images').getPublicUrl(data.path)
+    return urlData.publicUrl
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -768,6 +841,16 @@ function AddPropertyModal({
     try {
       setLoading(true)
 
+      let imageUrl: string | null = null
+      if (imageFile) {
+        setUploadingImage(true)
+        try {
+          imageUrl = await uploadPropertyImage(imageFile)
+        } finally {
+          setUploadingImage(false)
+        }
+      }
+
       const property = {
         title: formData.title,
         address: formData.address.trim(),
@@ -788,6 +871,11 @@ function AddPropertyModal({
           ? (Number(formData.district_stage) as 1 | 2 | 3 | 4)
           : null,
         developer_track_record: formData.developer_track_record.trim() || null,
+        image_url: imageUrl,
+        completion_status: formData.completion_status || null,
+        service_charge: formData.service_charge ? parseFloat(formData.service_charge) : null,
+        rera_permit: formData.rera_permit.trim() || null,
+        parking_spaces: formData.parking_spaces ? parseInt(formData.parking_spaces, 10) : null,
         agentId,
       }
 
@@ -811,6 +899,7 @@ function AddPropertyModal({
       alert(`Error: ${error.message}`)
     } finally {
       setLoading(false)
+      setUploadingImage(false)
     }
   }
 
@@ -838,6 +927,48 @@ function AddPropertyModal({
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Property Photo</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => onImageSelected(e.target.files?.[0] || null)}
+              />
+              {imagePreview ? (
+                <div className="overflow-hidden rounded-xl border border-violet-200">
+                  <img src={imagePreview} alt="Preview" className="h-[200px] w-full object-cover" />
+                  <div className="flex items-center justify-between gap-2 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <span className="truncate">
+                      {imageFile?.name} · {imageFile ? `${(imageFile.size / 1024).toFixed(0)} KB` : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="font-medium text-rose-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-[200px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition hover:border-violet-400"
+                  style={{
+                    background: 'rgba(124,58,237,0.05)',
+                    borderColor: 'rgba(124,58,237,0.3)',
+                  }}
+                >
+                  <ImagePlus className="h-8 w-8 text-violet-500" />
+                  <span className="text-sm font-semibold text-slate-800">Upload Property Photo</span>
+                  <span className="text-xs text-slate-500">JPG, PNG or WebP · Max 5MB</span>
+                </button>
+              )}
+            </div>
+
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
               <input
@@ -1007,6 +1138,63 @@ function AddPropertyModal({
               />
             </div>
 
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Completion Status</label>
+              <select
+                value={formData.completion_status}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    completion_status: e.target.value as typeof formData.completion_status,
+                  })
+                }
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+              >
+                <option value="">Select status...</option>
+                {COMPLETION_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.value === 'ready' ? 'Ready to Move In' : opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Service Charge (AED/year)
+              </label>
+              <input
+                type="number"
+                value={formData.service_charge}
+                onChange={(e) => setFormData({ ...formData, service_charge: e.target.value })}
+                placeholder="e.g. 15000"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">RERA Permit No.</label>
+              <input
+                type="text"
+                value={formData.rera_permit}
+                onChange={(e) => setFormData({ ...formData, rera_permit: e.target.value })}
+                placeholder="e.g. 1234567890"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Parking Spaces</label>
+              <input
+                type="number"
+                min={0}
+                value={formData.parking_spaces}
+                onChange={(e) => setFormData({ ...formData, parking_spaces: e.target.value })}
+                placeholder="e.g. 1"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+              />
+            </div>
+
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Amenities (comma-separated)</label>
               <input
@@ -1052,10 +1240,11 @@ function AddPropertyModal({
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              disabled={loading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              disabled={loading || uploadingImage}
             >
-              {loading ? 'Adding...' : 'Add Property'}
+              {(loading || uploadingImage) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {uploadingImage ? 'Uploading...' : loading ? 'Adding...' : 'Add Property'}
             </button>
           </div>
         </form>

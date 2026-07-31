@@ -12,9 +12,12 @@ import PropertyCard from './PropertyCard'
 import PropertyPaymentPlanPanel from './PropertyPaymentPlanPanel'
 import {
   computePricePerSqm,
+  capitalizeWords,
   formatPricePerSqm,
+  getCompletionStatusMeta,
   getDistrictStageMeta,
 } from '../../src/lib/uae-property'
+import { Building2 } from 'lucide-react'
 
 type PropertyDetailsModalProps = {
   open: boolean
@@ -53,10 +56,11 @@ export default function PropertyDetailsModal({
     return null
   }
 
-  const photos = property.photos && property.photos.length > 0 ? property.photos : []
-  const mainPhoto =
-    photos[activeIndex] ||
-    'https://via.placeholder.com/800x500?text=Property'
+  const photos = [
+    ...(property.image_url ? [property.image_url] : []),
+    ...((property.photos || []).filter((p) => p && p !== property.image_url)),
+  ]
+  const mainPhoto = photos[activeIndex] || null
 
   const price =
     property.price !== null && property.price !== undefined
@@ -64,7 +68,9 @@ export default function PropertyDetailsModal({
       : 'Price on request'
 
   const addressLine = property.address || 'Address not available'
-  const locationLine = [property.city, property.state, property.zip_code].filter(Boolean).join(', ')
+  const locationLine = [capitalizeWords(property.city), capitalizeWords(property.state)]
+    .filter(Boolean)
+    .join(', ')
 
   const beds = property.bedrooms ?? 'N/A'
   const baths = property.bathrooms ?? 'N/A'
@@ -76,6 +82,7 @@ export default function PropertyDetailsModal({
     property.price_per_sqm ?? computePricePerSqm(property.price, property.sqft)
   )
   const districtMeta = getDistrictStageMeta(property.district_stage ?? null)
+  const completionMeta = getCompletionStatusMeta(property.completion_status ?? null)
   const isFreehold = property.is_freehold !== false
 
   const statusLabel =
@@ -156,11 +163,27 @@ export default function PropertyDetailsModal({
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="w-full lg:w-2/3">
                   <div className="relative h-56 sm:h-72 md:h-80 w-full overflow-hidden rounded-xl bg-slate-100">
-                    <img
-                      src={mainPhoto}
-                      alt={addressLine}
-                      className="h-full w-full object-cover"
-                    />
+                    {mainPhoto ? (
+                      <img
+                        src={mainPhoto}
+                        alt={addressLine}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-full w-full flex-col items-center justify-center gap-2"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, rgba(124,58,237,0.1) 0%, rgba(6,182,212,0.05) 100%)',
+                        }}
+                      >
+                        <Building2
+                          className="h-12 w-12"
+                          style={{ color: 'rgba(124,58,237,0.3)' }}
+                        />
+                        <span className="text-xs text-slate-400">No photo yet</span>
+                      </div>
+                    )}
                   </div>
                   {photos.length > 1 && (
                     <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -193,6 +216,13 @@ export default function PropertyDetailsModal({
                       {beds} bd • {baths} ba • {sqft}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
+                      {completionMeta && (
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${completionMeta.badgeClass}`}
+                        >
+                          {completionMeta.label}
+                        </span>
+                      )}
                       {pricePerSqmLabel && (
                         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                           {pricePerSqmLabel}
@@ -230,8 +260,18 @@ export default function PropertyDetailsModal({
 
                   <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
                     <div>
-                      <p className="font-semibold text-slate-800">Year built</p>
-                      <p>{property.year_built ?? 'N/A'}</p>
+                      <p className="font-semibold text-slate-800">Completion Status</p>
+                      <p>
+                        {completionMeta ? (
+                          <span
+                            className={`inline-flex mt-0.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${completionMeta.badgeClass}`}
+                          >
+                            {completionMeta.label}
+                          </span>
+                        ) : (
+                          'Not specified'
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="font-semibold text-slate-800">Property type</p>
@@ -239,19 +279,23 @@ export default function PropertyDetailsModal({
                     </div>
                     <div>
                       <p className="font-semibold text-slate-800">Parking</p>
-                      <p>{property.parking || 'N/A'}</p>
+                      <p>
+                        {property.parking_spaces != null && property.parking_spaces > 0
+                          ? `${property.parking_spaces} space${property.parking_spaces === 1 ? '' : 's'}`
+                          : 'Not specified'}
+                      </p>
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-800">HOA fee</p>
+                      <p className="font-semibold text-slate-800">Service Charge</p>
                       <p>
-                        {property.hoa_fee
-                          ? `AED ${property.hoa_fee.toLocaleString()}`
-                          : 'None'}
+                        {property.service_charge != null && Number(property.service_charge) > 0
+                          ? `AED ${Number(property.service_charge).toLocaleString()} / year`
+                          : 'Not specified'}
                       </p>
                     </div>
                     <div className="col-span-2">
-                      <p className="font-semibold text-slate-800">School district</p>
-                      <p>{property.school_district || 'Not specified'}</p>
+                      <p className="font-semibold text-slate-800">RERA Permit No.</p>
+                      <p>{property.rera_permit?.trim() || 'Not specified'}</p>
                     </div>
                   </div>
 
