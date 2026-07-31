@@ -5,6 +5,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { AppErrorBoundary } from './components/AppErrorBoundary'
 
+// Mark boot early so slow OneDrive/Vite cold starts don't flash the index.html timeout.
+;(window as unknown as { __GNANOVA_APP_LOADED__?: boolean }).__GNANOVA_APP_LOADED__ = true
+
 const el = document.getElementById('root')
 if (!el) {
   document.body.innerHTML =
@@ -17,5 +20,4 @@ if (!el) {
       </AppErrorBoundary>
     </React.StrictMode>
   )
-  ;(window as unknown as { __GNANOVA_APP_LOADED__?: boolean }).__GNANOVA_APP_LOADED__ = true
 }
