@@ -732,7 +732,7 @@ function AddPropertyModal({
     bedrooms: '',
     bathrooms: '',
     sqft: '',
-    property_type: 'single_family',
+    property_type: 'apartment',
     amenities: '',
     description: '',
     virtual_tour_url: '',
@@ -831,18 +831,18 @@ function AddPropertyModal({
                 required
                 value={formData.city}
                 onChange={(e) => setFormData({...formData, city: e.target.value})}
-                placeholder="Miami"
+                placeholder="Dubai"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Emirate</label>
               <input
                 type="text"
                 value={formData.state}
                 onChange={(e) => setFormData({...formData, state: e.target.value})}
-                placeholder="FL"
+                placeholder="e.g. Dubai / Abu Dhabi / Sharjah"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
             </div>
@@ -866,10 +866,14 @@ function AddPropertyModal({
                 onChange={(e) => setFormData({...formData, property_type: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
-                <option value="single_family">Single Family</option>
-                <option value="condo">Condo</option>
-                <option value="townhouse">Townhouse</option>
                 <option value="apartment">Apartment</option>
+                <option value="villa">Villa</option>
+                <option value="townhouse">Townhouse</option>
+                <option value="penthouse">Penthouse</option>
+                <option value="studio">Studio</option>
+                <option value="office">Office</option>
+                <option value="retail">Retail</option>
+                <option value="plot">Plot</option>
               </select>
             </div>
 
