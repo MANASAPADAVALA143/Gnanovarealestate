@@ -1,7 +1,10 @@
-import twilio from 'twilio'
+// import twilio from 'twilio'  // LEGACY — kept for rollback; WhatsApp now uses Meta Cloud API
 import type { Request, Response } from 'express'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { MatchedLead } from './whatsapp-inbound.ts'
+
+const META_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '1298685323329504'
+const META_API_URL = `https://graph.facebook.com/v18.0/${META_PHONE_NUMBER_ID}/messages`
 
 function stripWhatsAppPrefix(from: string): string {
   return from.replace(/^whatsapp:/i, '').trim()
@@ -52,26 +55,13 @@ export type WhatsAppInternalNoteRow = {
   agents?: { full_name: string | null } | null
 }
 
-let twilioClient: ReturnType<typeof twilio> | null | undefined
+// LEGACY Twilio WhatsApp client — kept for rollback (used by inbound TwiML fallback only)
+// let twilioClient: ReturnType<typeof twilio> | null | undefined
+// function getTwilioClient(): ReturnType<typeof twilio> | null { ... }
+// function whatsappAddress(phone: string): string { ... }
 
-function getTwilioClient(): ReturnType<typeof twilio> | null {
-  if (twilioClient === undefined) {
-    const sid = process.env.TWILIO_ACCOUNT_SID
-    const token = process.env.TWILIO_AUTH_TOKEN
-    twilioClient = sid && token ? twilio(sid, token) : null
-  }
-  return twilioClient
-}
-
-function whatsappAddress(phone: string): string {
-  return phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`
-}
-
-function normalizeFromAddress(fromEnv: string | undefined): string | null {
-  if (!fromEnv?.trim()) return null
-  const t = fromEnv.trim()
-  return t.startsWith('whatsapp:') ? t : `whatsapp:${t}`
-}
+// LEGACY — only used by Twilio path; kept for rollback
+// function normalizeFromAddress(fromEnv: string | undefined): string | null { ... }
 
 function isThreadStatus(value: string): value is WhatsAppThreadStatus {
   return (WHATSAPP_THREAD_STATUSES as readonly string[]).includes(value)
@@ -92,22 +82,73 @@ async function isManager(supabase: SupabaseClient, agentId: string | null): Prom
 }
 
 export async function sendWhatsAppOutbound(toRaw: string, body: string): Promise<string | null> {
-  const client = getTwilioClient()
-  const from = normalizeFromAddress(process.env.TWILIO_WHATSAPP_FROM)
-  if (!client || !from) {
-    console.warn('[whatsapp-inbox] Twilio not configured — cannot send outbound message')
+  // ── Meta Cloud API (active) ──────────────────────────────────────────────
+  const token = process.env.WHATSAPP_TOKEN
+  if (!token) {
+    console.error('[whatsapp-inbox] WHATSAPP_TOKEN is not set — cannot send WhatsApp message. Add it to .env.')
     return null
   }
 
-  const to = whatsappAddress(stripWhatsAppPrefix(toRaw))
+  // Normalize: strip whatsapp: prefix and leading +
+  const to = stripWhatsAppPrefix(toRaw).replace(/^\+/, '')
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'text',
+    text: { body },
+  }
+
+  let fetchResponse: globalThis.Response
   try {
-    const msg = await client.messages.create({ body, from, to })
-    return msg.sid
+    fetchResponse = await fetch(META_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[whatsapp-inbox] Twilio send failed:', message)
+    console.error('[whatsapp-inbox] Meta API network error:', message)
     throw new Error(message)
   }
+
+  if (!fetchResponse.ok) {
+    let errBody = ''
+    try {
+      errBody = JSON.stringify(await fetchResponse.json())
+    } catch { /* ignore */ }
+    const statusText = `${fetchResponse.status} ${fetchResponse.statusText}`
+    console.error(`[whatsapp-inbox] Meta API error ${statusText}:`, errBody)
+    if (fetchResponse.status === 401) {
+      console.error('[whatsapp-inbox] WHATSAPP_TOKEN is expired or invalid — generate a new token from Meta Developer Portal')
+    }
+    throw new Error(`Meta WhatsApp API ${statusText}: ${errBody}`)
+  }
+
+  const result = await fetchResponse.json() as { messages?: { id: string }[] }
+  const msgId = result.messages?.[0]?.id ?? null
+  console.log('[whatsapp-inbox] Meta message sent, id:', msgId)
+  return msgId
+
+  // ── LEGACY Twilio WhatsApp (commented out for rollback) ──────────────────
+  // const client = getTwilioClient()
+  // const from = normalizeFromAddress(process.env.TWILIO_WHATSAPP_FROM)
+  // if (!client || !from) {
+  //   console.warn('[whatsapp-inbox] Twilio not configured — cannot send outbound message')
+  //   return null
+  // }
+  // const toAddr = whatsappAddress(stripWhatsAppPrefix(toRaw))
+  // try {
+  //   const msg = await client.messages.create({ body, from, to: toAddr })
+  //   return msg.sid
+  // } catch (err: unknown) {
+  //   const message = err instanceof Error ? err.message : String(err)
+  //   console.error('[whatsapp-inbox] Twilio send failed:', message)
+  //   throw new Error(message)
+  // }
 }
 
 async function findThreadByPhone(
@@ -473,7 +514,7 @@ export async function replyThreadHandler(
       return
     }
 
-    const twilioSid = await sendWhatsAppOutbound(thread.phone_number, text)
+    const messageSid = await sendWhatsAppOutbound(thread.phone_number, text)
 
     const { data: message, error: msgError } = await supabase
       .from('whatsapp_thread_messages')
@@ -483,7 +524,7 @@ export async function replyThreadHandler(
         sender_type: 'agent',
         sender_agent_id: agentId,
         body: text,
-        twilio_message_sid: twilioSid,
+        twilio_message_sid: messageSid, // column kept for schema compat; now stores Meta message ID
       } as never)
       .select('*')
       .single()

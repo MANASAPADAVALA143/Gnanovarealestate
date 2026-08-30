@@ -25,6 +25,7 @@ import { generateQueryEmbedding } from './lib/embeddings.ts'
 import { verifyFacebookWebhook, handleFacebookLeadWebhook } from './src/api/facebook-webhook.ts'
 import { handleVapiInboundCall, updateInboundCall } from './src/api/vapi-inbound.ts'
 import { onLeadCreated } from './lib/crm-hooks.ts'
+import { enqueueSpeedToLeadCall, isAutoDialSource } from './server/lib/speed-to-lead.ts'
 import { CONSENT_TEXT, logConsentToDb } from './src/lib/consent.ts'
 import { syncToGoHighLevel } from './src/lib/gohighlevel.ts'
 import { 
@@ -54,7 +55,7 @@ import { createPaymentRunsRouter } from './server/routes/payment-runs.ts'
 import { createPropertyPaymentPlansRouter } from './server/routes/property-payment-plans.ts'
 import { runOpenHouseScheduler } from './server/lib/open-house-scheduler.ts'
 import { runNudgeScheduler } from './server/lib/nudge-scheduler.ts'
-import { handleWhatsAppInboundWebhook } from './server/lib/whatsapp-inbound.ts'
+import { handleWhatsAppInboundWebhook, processInboundWhatsApp } from './server/lib/whatsapp-inbound.ts'
 import {
   createDealHandler,
   listDealsHandler,
@@ -457,13 +458,15 @@ app.post('/api/leads/create', async (req, res) => {
     }
 
     // 1. Save lead to Gnanova database
-    if (!supabase) {
+    let sbServer
+    try { sbServer = getSupabaseServerClient() } catch (_) { sbServer = null }
+    if (!sbServer) {
       return res.status(500).json({
         error: 'Database not configured',
       })
     }
 
-    const { data: lead, error: dbError } = await supabase
+    const { data: lead, error: dbError } = await sbServer
       .from('leads')
       .insert({
         name: leadData.name,
@@ -482,9 +485,17 @@ app.post('/api/leads/create', async (req, res) => {
       .single()
 
     if (dbError) {
-      console.error('Error saving lead:', dbError)
+      console.error('Error saving lead:', JSON.stringify(dbError))
+      if (dbError.code === '23505') {
+        // Duplicate phone — fetch the existing lead and treat as success
+        const { data: existing } = await sbServer.from('leads').select().eq('phone', leadData.phone).single()
+        if (existing) {
+          return res.status(200).json({ message: 'Lead already exists', lead: existing, duplicate: true })
+        }
+      }
       return res.status(500).json({
         error: 'Failed to save lead to database',
+        detail: dbError.message,
       })
     }
 
@@ -505,7 +516,28 @@ app.post('/api/leads/create', async (req, res) => {
       context: 'lead',
     })
 
-    // 2. NEW: Trigger VAPI call via n8n
+    // 2. Auto-dial Priya for portal + Meta sources (same allowlist as speed-to-lead)
+    const leadSource = lead.source || leadData.source || 'website'
+    if (isAutoDialSource(leadSource)) {
+      try {
+        const dial = await enqueueSpeedToLeadCall({
+          leadId: lead.id,
+          name: lead.name,
+          phone: lead.phone,
+          source: leadSource,
+          location: lead.location || null,
+        })
+        console.log(
+          dial.dialed
+            ? `📞 Speed-to-lead dialed for ${leadSource} lead ${lead.id}`
+            : `⚠️ Speed-to-lead skipped for ${lead.id}: ${dial.reason}`
+        )
+      } catch (dialErr) {
+        console.error('Error enqueueing speed-to-lead:', dialErr)
+      }
+    }
+
+    // 3. Optional n8n bridge (legacy)
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || process.env.VITE_N8N_WEBHOOK_URL
 
     if (n8nWebhookUrl) {
@@ -519,7 +551,7 @@ app.post('/api/leads/create', async (req, res) => {
             leadPhone: lead.phone,
             leadEmail: lead.email,
             propertyId: lead.property_id,
-            source: lead.source || 'website',
+            source: leadSource,
             timestamp: new Date().toISOString(),
           }),
         })
@@ -528,13 +560,13 @@ app.post('/api/leads/create', async (req, res) => {
         console.error('Error triggering n8n webhook:', n8nError)
         // Log error but don't fail the request
       }
-    } else {
-      console.warn('N8N_WEBHOOK_URL not configured, skipping webhook trigger')
     }
 
     res.json({
       success: true,
-      message: 'Lead captured. AI will call within 2 minutes.',
+      message: isAutoDialSource(leadSource)
+        ? 'Lead captured. Priya will call within 60 seconds.'
+        : 'Lead captured successfully.',
       leadId: lead.id,
     })
   } catch (error) {
@@ -1082,9 +1114,58 @@ app.patch('/api/viewings/:id', async (req, res) => {
   }
 })
 
+// Meta webhook verification (GET) — responds to hub.challenge so Meta can verify the endpoint
+app.get('/webhook/whatsapp/inbound', (req, res) => {
+  const mode = req.query['hub.mode']
+  const token = req.query['hub.verify_token']
+  const challenge = req.query['hub.challenge']
+  const expectedToken = process.env.WEBHOOK_SECRET || 'gnanova-secret-2024'
+  if (mode === 'subscribe' && token === expectedToken) {
+    console.log('[whatsapp] Meta webhook verified')
+    res.status(200).send(challenge)
+  } else {
+    console.warn('[whatsapp] Meta webhook verification failed — token mismatch')
+    res.status(403).send('Forbidden')
+  }
+})
+
+// Meta Cloud API inbound WhatsApp (JSON body) — routes into the same
+// whatsapp_threads / whatsapp_thread_messages tables the Inbox UI reads.
+app.post('/webhook/whatsapp/inbound', async (req, res) => {
+  const body = req.body
+  if (body && body.object === 'whatsapp_business_account') {
+    try {
+      for (const entry of body.entry || []) {
+        for (const change of entry.changes || []) {
+          const val = change.value
+          for (const msg of val?.messages || []) {
+            const from = msg.from // phone number, no '+' prefix
+            const text = msg.text?.body || msg.button?.text || `[${msg.type}]`
+            console.log(`[whatsapp-inbound] Meta message from +${from}: ${text}`)
+            try {
+              await processInboundWhatsApp({
+                from: `+${from}`,
+                body: text,
+                messageSid: msg.id,
+                mediaUrl: null,
+              })
+            } catch (e) {
+              console.error('[whatsapp-inbound] processInboundWhatsApp failed:', e)
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[whatsapp-inbound] Error:', err)
+    }
+    return res.status(200).json({ status: 'ok' })
+  }
+  res.status(404).json({ error: 'Not a WhatsApp event' })
+})
+
 // Twilio inbound WhatsApp (urlencoded body — validated via x-twilio-signature)
 app.post(
-  '/webhook/whatsapp/inbound',
+  '/webhook/whatsapp/twilio',
   validateTwilioSignature,
   async (req, res) => {
     try {

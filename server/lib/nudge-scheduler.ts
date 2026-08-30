@@ -41,7 +41,7 @@ export async function runNudgeScheduler(): Promise<void> {
 
   const { data: leads, error } = await supabase
     .from('leads')
-    .select('id, name, phone, lead_type, location, agent_id, nudge_count, status')
+    .select('id, name, phone, location, agent_id, nudge_count, status')
     .lte('created_at', cutoff)
     .eq('nudge_count', 0)
     .not('status', 'in', '(closed,lost,disqualified,qualified)')
@@ -60,7 +60,6 @@ export async function runNudgeScheduler(): Promise<void> {
     id: string
     name: string | null
     phone: string
-    lead_type: string | null
     location: string | null
     agent_id: string | null
     nudge_count: number | null
@@ -70,7 +69,7 @@ export async function runNudgeScheduler(): Promise<void> {
     if (!e164 || e164.replace(/\D/g, '').length < 8) continue
 
     const firstName = lead.name?.split(/\s+/)[0] || 'there'
-    const lt = (lead.lead_type || 'buyer').toLowerCase()
+    const lt = 'buyer' // lead_type column not in schema — default to buyer
 
     let message = ''
     if (lt === 'seller') {
