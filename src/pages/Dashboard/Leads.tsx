@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase, type Call } from '../../lib/supabase'
-import { Search, Phone, Mail, X, PenTool, UserRound } from 'lucide-react'
+import { Search, Phone, Mail, X, PenTool, UserRound, Plus, Zap } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import LeadTimeline from '../../components/crm/LeadTimeline'
 import ConsentBadge from '../../components/crm/ConsentBadge'
@@ -10,9 +10,7 @@ import ConsentBadge from '../../components/crm/ConsentBadge'
 type LeadJoin = {
   id: string
   agent_id: string | null
-  lead_type?: string | null
   urgency?: string | null
-  nudge_count?: number | null
   nudge_sent_at?: string | null
   lead_score?: number | null
   score_label?: string | null
@@ -24,11 +22,18 @@ type AgentPick = { id: string; full_name: string | null }
 type ResolvedLeadRow = {
   id: string
   agent_id: string | null
-  lead_type?: string | null
   urgency?: string | null
-  nudge_count?: number | null
   nudge_sent_at?: string | null
 }
+
+const CREATE_SOURCE_OPTIONS = [
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'meta', label: 'Meta' },
+  { value: 'zillow', label: 'Zillow' },
+  { value: 'realtor', label: 'Realtor.com' },
+  { value: 'website', label: 'Website' },
+  { value: 'manual', label: 'Manual' },
+] as const
 
 export default function LeadsPage() {
   const { agent, loading: authLoading } = useAuth()
@@ -43,6 +48,21 @@ export default function LeadsPage() {
   const [resolvedLead, setResolvedLead] = useState<ResolvedLeadRow | null>(null)
   const [reassignSaving, setReassignSaving] = useState(false)
   const [modalTab, setModalTab] = useState<'details' | 'timeline'>('details')
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [createOk, setCreateOk] = useState<string | null>(null)
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    location: '',
+    source: 'facebook',
+  })
+
+  const nextAppOrigin =
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_NEXT_APP_URL?.replace(/\/$/, '')) ||
+    'http://localhost:3002'
 
   useEffect(() => {
     if (authLoading) return
@@ -57,6 +77,38 @@ export default function LeadsPage() {
   useEffect(() => {
     filterLeads()
   }, [leads, searchQuery, statusFilter])
+
+  async function initiateVapiCall(phone: string, name: string) {
+    const apiKey = import.meta.env.VITE_VAPI_API_KEY
+    const phoneNumberId = import.meta.env.VITE_VAPI_PHONE_NUMBER_ID || '24a2adcd-7093-42e1-b703-9bc028d090cb'
+    if (!apiKey) {
+      alert('VAPI not configured. Check VITE_VAPI_API_KEY in .env')
+      return
+    }
+    try {
+      const res = await fetch('https://api.vapi.ai/call', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'outboundPhoneCall',
+          phoneNumberId,
+          assistantId: '8117fc01-193b-4db8-a4a1-aa69f3555050',
+          assistantOverrides: {
+            variableValues: { leadName: name },
+          },
+          customer: { number: phone, name },
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        alert(`✅ AI call initiated to ${phone}!\nCall ID: ${data.id}\n\nPriya will call you in a few seconds.`)
+      } else {
+        alert(`❌ Call failed: ${data.message || JSON.stringify(data)}`)
+      }
+    } catch (e: unknown) {
+      alert(`❌ Error: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
 
   async function loadAgents() {
     try {
@@ -79,15 +131,20 @@ export default function LeadsPage() {
   async function fetchLeads() {
     try {
       const { data, error } = await supabase
-        .from('calls')
-        .select(
-          '*, leads ( id, agent_id, lead_type, urgency, nudge_count, nudge_sent_at, lead_score, score_label )'
-        )
-        .eq('agent_id', agent!.id)
+        .from('leads')
+        .select('id, name, phone, email, location, source, status, pipeline_stage, lead_score, score_label, created_at, agent_id, urgency, nudge_sent_at')
         .order('created_at', { ascending: false })
+        .limit(100)
 
       if (error) throw error
-      setLeads((data as CallWithLead[]) || [])
+      const mapped = (data || []).map((row: Record<string, unknown>) => ({
+        ...row,
+        lead_name: row.name,
+        lead_phone: row.phone,
+        lead_email: row.email,
+        lead_location: row.location,
+      }))
+      setLeads(mapped as unknown as CallWithLead[])
     } catch (error) {
       console.error('Error fetching leads:', error)
     } finally {
@@ -108,9 +165,7 @@ export default function LeadsPage() {
           setResolvedLead({
             id: lj.id,
             agent_id: lj.agent_id,
-            lead_type: lj.lead_type,
             urgency: lj.urgency,
-            nudge_count: lj.nudge_count,
             nudge_sent_at: lj.nudge_sent_at,
           })
         }
@@ -123,7 +178,7 @@ export default function LeadsPage() {
       }
       const { data } = await supabase
         .from('leads')
-        .select('id, agent_id, lead_type, urgency, nudge_count, nudge_sent_at')
+        .select('id, agent_id, urgency, nudge_sent_at')
         .eq('phone', phone)
         .maybeSingle()
       if (!cancelled) {
@@ -221,6 +276,45 @@ export default function LeadsPage() {
     return t.charAt(0).toUpperCase() + t.slice(1)
   }
 
+  async function handleCreateLead(e: React.FormEvent) {
+    e.preventDefault()
+    setCreateError(null)
+    setCreateOk(null)
+    if (!createForm.name.trim() || !createForm.phone.trim()) {
+      setCreateError('Name and phone are required')
+      return
+    }
+    setCreating(true)
+    try {
+      const res = await fetch('/api/leads/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: createForm.name.trim(),
+          phone: createForm.phone.trim(),
+          email: createForm.email.trim() || undefined,
+          location: createForm.location.trim() || undefined,
+          source: createForm.source,
+          consent_given: true,
+          consent_timestamp: new Date().toISOString(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || data.message || `Failed (${res.status})`)
+      }
+      setCreateOk(
+        data.message ||
+          'Lead created. If source is Facebook/Meta/Zillow/Realtor, Priya will dial within 60s.'
+      )
+      setCreateForm({ name: '', phone: '', email: '', location: '', source: 'facebook' })
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create lead')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   if (authLoading) {
     return <div className="flex items-center justify-center h-64 text-slate-600">Loading...</div>
   }
@@ -244,10 +338,144 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Leads</h1>
-        <p className="text-slate-600 mt-1">Manage and follow up with your qualified leads</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Leads</h1>
+          <p className="text-slate-600 mt-1">Manage and follow up with your qualified leads</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`${nextAppOrigin}/dashboard/speed-to-lead`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Zap className="w-4 h-4 text-amber-500" />
+            Speed-to-Lead
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setShowCreate(true)
+              setCreateError(null)
+              setCreateOk(null)
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            New lead
+          </button>
+        </div>
       </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-900">Create lead</h2>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="p-1 rounded-lg text-slate-500 hover:bg-slate-100"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateLead} className="p-5 space-y-4">
+              <p className="text-sm text-slate-600">
+                Source <strong>Facebook</strong> / Meta / Zillow / Realtor triggers Priya auto-dial
+                (speed-to-lead).
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                <input
+                  required
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                <input
+                  required
+                  value={createForm.phone}
+                  onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                  placeholder="+9715..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                <input
+                  value={createForm.location}
+                  onChange={(e) => setCreateForm({ ...createForm, location: e.target.value })}
+                  placeholder="Dubai Marina"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
+                <select
+                  value={createForm.source}
+                  onChange={(e) => setCreateForm({ ...createForm, source: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {CREATE_SOURCE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {createError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {createError}
+                </p>
+              )}
+              {createOk && (
+                <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                  {createOk}{' '}
+                  <a
+                    href={`${nextAppOrigin}/dashboard/speed-to-lead`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline font-medium"
+                  >
+                    Open Speed-to-Lead
+                  </a>
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {creating ? 'Creating…' : 'Create & dial'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-slate-200 p-4">
@@ -363,11 +591,9 @@ export default function LeadsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${leadTypeBadgeClass(
-                          lead.leads?.lead_type
-                        )}`}
+                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${leadTypeBadgeClass(undefined)}`}
                       >
-                        {leadTypeLabel(lead.leads?.lead_type)}
+                        {leadTypeLabel(undefined)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -388,7 +614,7 @@ export default function LeadsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            window.location.href = `tel:${lead.lead_phone}`
+                            initiateVapiCall(lead.lead_phone || '', lead.lead_name || 'Lead')
                           }}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                           title="Call"
@@ -524,11 +750,9 @@ export default function LeadsPage() {
                   <h3 className="font-semibold text-slate-900 mb-3">CRM</h3>
                   <div className="flex flex-wrap gap-2 items-center mb-2">
                     <span
-                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${leadTypeBadgeClass(
-                        resolvedLead.lead_type
-                      )}`}
+                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${leadTypeBadgeClass(undefined)}`}
                     >
-                      {leadTypeLabel(resolvedLead.lead_type)}
+                      {leadTypeLabel(undefined)}
                     </span>
                     {resolvedLead.urgency === 'high' ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -543,11 +767,7 @@ export default function LeadsPage() {
                   <p className="text-sm text-slate-700">
                     <span className="text-slate-600">Nudges:</span>{' '}
                     <span className="font-medium">
-                      {resolvedLead.nudge_count != null && resolvedLead.nudge_count > 0
-                        ? resolvedLead.nudge_count === 1
-                          ? '1 nudge sent'
-                          : `${resolvedLead.nudge_count} nudges sent`
-                        : 'No nudges yet'}
+                        {resolvedLead.nudge_sent_at ? '1+ nudges sent' : 'No nudges yet'}
                     </span>
                   </p>
                   {resolvedLead.nudge_sent_at && (
@@ -596,7 +816,7 @@ export default function LeadsPage() {
               <div className="space-y-3">
                 <div className="flex gap-3">
                   <button
-                    onClick={() => window.location.href = `tel:${selectedLead.lead_phone}`}
+                    onClick={() => initiateVapiCall(selectedLead.lead_phone || '', selectedLead.lead_name || 'Lead')}
                     className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
                     <Phone className="w-4 h-4 inline mr-2" />
