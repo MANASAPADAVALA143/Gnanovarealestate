@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "webhook": "tsx webhook-server.js",
+    "webhook": "tsx --no-cache webhook-server.js",
     "load-properties": "tsx scripts/load-properties.ts",
     "test-rag": "tsx scripts/test-rag.ts",
     "e2e-test": "tsx scripts/e2e-test.ts",
