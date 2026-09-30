@@ -28,6 +28,8 @@ import CommissionsPage from './src/pages/Dashboard/Commissions'
 import BrokerInvoicesPage from './src/pages/Dashboard/BrokerInvoices'
 import PaymentRunPage from './src/pages/Dashboard/PaymentRun'
 import InboxPage from './src/pages/Dashboard/Inbox'
+import SuiteInventoryPage from './src/pages/Dashboard/SuiteInventory'
+import FacebookLeadsPage from './src/pages/Dashboard/FacebookLeads'
 import VoiceCallCenter from './pages/VoiceCallCenter'
 import PrivacyPolicy from './src/pages/PrivacyPolicy'
 import OpenHouseCheckInPage from './src/pages/OpenHouseCheckInPage'
@@ -126,6 +128,8 @@ function App() {
             <Route path="tasks" element={<TasksPage />} />
             <Route path="calls" element={<CallsPage />} />
             <Route path="properties" element={<PropertiesManagementPage />} />
+            <Route path="suites" element={<SuiteInventoryPage />} />
+            <Route path="facebook-leads" element={<FacebookLeadsPage />} />
             <Route path="listing-writer" element={<ListingWriter />} />
             <Route path="campaigns" element={<CampaignsPage />} />
             <Route path="appointments" element={<AppointmentsPage />} />

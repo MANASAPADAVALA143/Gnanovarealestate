@@ -29,6 +29,8 @@ import {
   Shield,
   TrendingUp,
   CreditCard,
+  Building2,
+  Facebook,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -60,6 +62,8 @@ export default function DashboardLayout() {
     { name: 'Inbox', href: '/dashboard/inbox', icon: MessageCircle },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },
+    { name: 'Suite Inventory', href: '/dashboard/suites', icon: Building2 },
+    { name: 'Facebook Leads', href: '/dashboard/facebook-leads', icon: Facebook },
     { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
     { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
