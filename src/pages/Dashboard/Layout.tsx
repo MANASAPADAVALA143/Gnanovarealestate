@@ -33,6 +33,7 @@ import {
   Facebook,
   Receipt,
   Sun,
+  Upload,
   LayoutDashboard as OwnerIcon,
   FileText as InvoiceIcon,
   ScrollText,
@@ -92,6 +93,7 @@ export default function DashboardLayout() {
           { name: 'Admin', href: '/dashboard/admin', icon: Shield },
         ]
       : []),
+    { name: 'Data Migration', href: '/dashboard/data-migration', icon: Upload },
     { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
