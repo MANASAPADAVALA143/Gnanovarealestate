@@ -4,7 +4,7 @@
  * and triggers a VAPI call for Hot leads.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import twilio from 'twilio'
+import { sendWhatsAppOutbound } from './whatsapp-inbox.ts'
 
 export type BotScore = 'Hot' | 'Warm' | 'Cold'
 
@@ -33,28 +33,11 @@ function getSupabase(): SupabaseClient {
   return createClient(url, key)
 }
 
-function getTwilio() {
-  const sid = process.env.TWILIO_ACCOUNT_SID
-  const token = process.env.TWILIO_AUTH_TOKEN
-  return sid && token ? twilio(sid, token) : null
-}
-
-function fromNumber(): string {
-  const n = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886'
-  return n.startsWith('whatsapp:') ? n : `whatsapp:${n}`
-}
-
 async function sendWhatsApp(to: string, body: string): Promise<boolean> {
-  const client = getTwilio()
-  if (!client) { console.warn('[bot] Twilio not configured'); return false }
-  const toAddr = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`
-  try {
-    await client.messages.create({ from: fromNumber(), to: toAddr, body })
-    return true
-  } catch (e: any) {
-    console.error('[bot] send failed:', e.message)
-    return false
-  }
+  // Uses Meta WhatsApp Cloud API via sendWhatsAppOutbound
+  const plain = to.replace(/^whatsapp:/i, '').replace(/^\+/, '').trim()
+  const sid = await sendWhatsAppOutbound(plain, body)
+  return sid !== null
 }
 
 function scoreAnswers(a1: string, a2: string, a3: string): BotScore {
