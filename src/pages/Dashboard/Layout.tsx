@@ -31,6 +31,10 @@ import {
   CreditCard,
   Building2,
   Facebook,
+  Receipt,
+  LayoutDashboard as OwnerIcon,
+  FileText as InvoiceIcon,
+  ScrollText,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -63,7 +67,16 @@ export default function DashboardLayout() {
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },
     { name: 'Suite Inventory', href: '/dashboard/suites', icon: Building2 },
+    { name: 'Payment Tracker', href: '/dashboard/payment-tracker', icon: Receipt },
+    ...(showAdminNav
+      ? [
+          { name: 'Owner Dashboard', href: '/dashboard/owner-dashboard', icon: OwnerIcon },
+          { name: 'Invoices', href: '/dashboard/invoices', icon: InvoiceIcon },
+          { name: 'Agreements', href: '/dashboard/agreements', icon: ScrollText },
+        ]
+      : []),
     { name: 'Facebook Leads', href: '/dashboard/facebook-leads', icon: Facebook },
+    { name: 'Payment Tracker', href: '/dashboard/payment-tracker', icon: CreditCard },
     { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
     { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },

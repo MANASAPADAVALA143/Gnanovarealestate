@@ -27,6 +27,10 @@ import DealsPage from './src/pages/Dashboard/Deals'
 import CommissionsPage from './src/pages/Dashboard/Commissions'
 import BrokerInvoicesPage from './src/pages/Dashboard/BrokerInvoices'
 import PaymentRunPage from './src/pages/Dashboard/PaymentRun'
+import PaymentTrackerPage from './src/pages/Dashboard/PaymentTracker'
+import OwnerDashboardPage from './src/pages/Dashboard/OwnerDashboard'
+import InvoiceGeneratorPage from './src/pages/Dashboard/InvoiceGenerator'
+import AgreementGeneratorPage from './src/pages/Dashboard/AgreementGenerator'
 import InboxPage from './src/pages/Dashboard/Inbox'
 import SuiteInventoryPage from './src/pages/Dashboard/SuiteInventory'
 import FacebookLeadsPage from './src/pages/Dashboard/FacebookLeads'
@@ -129,6 +133,10 @@ function App() {
             <Route path="calls" element={<CallsPage />} />
             <Route path="properties" element={<PropertiesManagementPage />} />
             <Route path="suites" element={<SuiteInventoryPage />} />
+            <Route path="payment-tracker" element={<PaymentTrackerPage />} />
+            <Route path="owner-dashboard" element={<OwnerDashboardPage />} />
+            <Route path="invoices" element={<InvoiceGeneratorPage />} />
+            <Route path="agreements" element={<AgreementGeneratorPage />} />
             <Route path="facebook-leads" element={<FacebookLeadsPage />} />
             <Route path="listing-writer" element={<ListingWriter />} />
             <Route path="campaigns" element={<CampaignsPage />} />
