@@ -56,6 +56,7 @@ import { createPropertyPaymentPlansRouter } from './server/routes/property-payme
 import { runOpenHouseScheduler } from './server/lib/open-house-scheduler.ts'
 import { runNudgeScheduler } from './server/lib/nudge-scheduler.ts'
 import { handleWhatsAppInboundWebhook, processInboundWhatsApp } from './server/lib/whatsapp-inbound.ts'
+import { handleBotReply, startBotForLead } from './server/lib/whatsapp-bot.ts'
 import {
   createDealHandler,
   listDealsHandler,
@@ -1143,12 +1144,16 @@ app.post('/webhook/whatsapp/inbound', async (req, res) => {
             const text = msg.text?.body || msg.button?.text || `[${msg.type}]`
             console.log(`[whatsapp-inbound] Meta message from +${from}: ${text}`)
             try {
-              await processInboundWhatsApp({
-                from: `+${from}`,
-                body: text,
-                messageSid: msg.id,
-                mediaUrl: null,
-              })
+              // Check if this is a bot qualification reply first
+              const handledByBot = await handleBotReply(`+${from}`, text)
+              if (!handledByBot) {
+                await processInboundWhatsApp({
+                  from: `+${from}`,
+                  body: text,
+                  messageSid: msg.id,
+                  mediaUrl: null,
+                })
+              }
             } catch (e) {
               console.error('[whatsapp-inbound] processInboundWhatsApp failed:', e)
             }

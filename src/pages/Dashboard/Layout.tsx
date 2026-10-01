@@ -76,6 +76,7 @@ export default function DashboardLayout() {
         ]
       : []),
     { name: 'Facebook Leads', href: '/dashboard/facebook-leads', icon: Facebook },
+    { name: 'WhatsApp Bot', href: '/dashboard/whatsapp-bot', icon: MessageCircle },
     { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
     { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
