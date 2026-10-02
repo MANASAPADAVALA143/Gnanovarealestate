@@ -43,6 +43,7 @@
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.57.4",
     "@types/multer": "^2.0.0",
+    "@vapi-ai/web": "^2.7.1",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
