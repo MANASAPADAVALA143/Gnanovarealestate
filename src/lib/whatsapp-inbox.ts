@@ -1,13 +1,4 @@
-function webhookBaseUrl(): string {
-  if (typeof import.meta !== 'undefined') {
-    const env = (import.meta as ImportMeta & { env?: Record<string, string> }).env
-    const fromEnv = env?.VITE_WEBHOOK_URL?.replace(/\/$/, '')
-    if (fromEnv) return fromEnv
-  }
-  return 'http://localhost:3001'
-}
-
-const WEBHOOK_BASE = webhookBaseUrl()
+import { supabase } from './supabase'
 
 export const WHATSAPP_THREAD_STATUSES = [
   'unassigned',
@@ -75,30 +66,21 @@ export function threadDisplayName(thread: WhatsAppThreadRow): string {
   return thread.leads?.name?.trim() || thread.phone_number
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${WEBHOOK_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  })
-  const json = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error(json.error || `Request failed (${res.status})`)
-  }
-  return json as T
-}
-
 export async function fetchWhatsAppThreads(params?: {
   status?: WhatsAppThreadStatus
   assigned_agent_id?: string
 }): Promise<WhatsAppThreadRow[]> {
-  const q = new URLSearchParams()
-  if (params?.status) q.set('status', params.status)
-  if (params?.assigned_agent_id) q.set('assigned_agent_id', params.assigned_agent_id)
-  const suffix = q.toString()
-  const data = await apiFetch<{ threads: WhatsAppThreadRow[] }>(
-    `/api/whatsapp/threads${suffix ? `?${suffix}` : ''}`
-  )
-  return data.threads
+  let q = supabase
+    .from('whatsapp_threads')
+    .select('*, leads(name, phone), agents(full_name)')
+    .order('last_message_at', { ascending: false })
+
+  if (params?.status) q = q.eq('status', params.status) as typeof q
+  if (params?.assigned_agent_id) q = q.eq('assigned_agent_id', params.assigned_agent_id) as typeof q
+
+  const { data, error } = await q
+  if (error) throw error
+  return (data || []) as WhatsAppThreadRow[]
 }
 
 export async function fetchWhatsAppThread(id: string): Promise<{
@@ -106,22 +88,45 @@ export async function fetchWhatsAppThread(id: string): Promise<{
   messages: WhatsAppThreadMessageRow[]
   notes: WhatsAppInternalNoteRow[]
 }> {
-  return apiFetch(`/api/whatsapp/threads/${id}`)
+  const [threadRes, messagesRes, notesRes] = await Promise.all([
+    supabase
+      .from('whatsapp_threads')
+      .select('*, leads(name, phone), agents(full_name)')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('whatsapp_thread_messages')
+      .select('*')
+      .eq('thread_id', id)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('whatsapp_internal_notes')
+      .select('*, agents(full_name)')
+      .eq('thread_id', id)
+      .order('created_at', { ascending: true }),
+  ])
+
+  if (threadRes.error) throw threadRes.error
+  return {
+    thread: threadRes.data as WhatsAppThreadRow,
+    messages: (messagesRes.data || []) as WhatsAppThreadMessageRow[],
+    notes: (notesRes.data || []) as WhatsAppInternalNoteRow[],
+  }
 }
 
 export async function assignWhatsAppThread(
   id: string,
   agentId: string,
-  actingAgentId?: string
 ): Promise<WhatsAppThreadRow> {
-  const data = await apiFetch<{ thread: WhatsAppThreadRow }>(`/api/whatsapp/threads/${id}/assign`, {
-    method: 'POST',
-    body: JSON.stringify({
-      agent_id: agentId,
-      acting_agent_id: actingAgentId ?? agentId,
-    }),
-  })
-  return data.thread
+  const { data, error } = await supabase
+    .from('whatsapp_threads')
+    .update({ assigned_agent_id: agentId, status: 'agent_handling', updated_at: new Date().toISOString() } as never)
+    .eq('id', id)
+    .select('*, leads(name, phone), agents(full_name)')
+    .single()
+
+  if (error) throw error
+  return data as WhatsAppThreadRow
 }
 
 export async function replyWhatsAppThread(
@@ -129,10 +134,32 @@ export async function replyWhatsAppThread(
   agentId: string,
   body: string
 ): Promise<{ thread: WhatsAppThreadRow; message: WhatsAppThreadMessageRow }> {
-  return apiFetch(`/api/whatsapp/threads/${id}/reply`, {
-    method: 'POST',
-    body: JSON.stringify({ agent_id: agentId, body }),
-  })
+  const now = new Date().toISOString()
+
+  const { data: msg, error: msgError } = await supabase
+    .from('whatsapp_thread_messages')
+    .insert({
+      thread_id: id,
+      direction: 'outbound',
+      sender_type: 'agent',
+      sender_agent_id: agentId,
+      body,
+    } as never)
+    .select('*')
+    .single()
+
+  if (msgError) throw msgError
+
+  const { data: thread, error: threadError } = await supabase
+    .from('whatsapp_threads')
+    .update({ last_message_at: now, last_message_preview: body, updated_at: now } as never)
+    .eq('id', id)
+    .select('*, leads(name, phone), agents(full_name)')
+    .single()
+
+  if (threadError) throw threadError
+
+  return { thread: thread as WhatsAppThreadRow, message: msg as WhatsAppThreadMessageRow }
 }
 
 export async function addWhatsAppThreadNote(
@@ -140,17 +167,24 @@ export async function addWhatsAppThreadNote(
   agentId: string,
   noteText: string
 ): Promise<WhatsAppInternalNoteRow> {
-  const data = await apiFetch<{ note: WhatsAppInternalNoteRow }>(`/api/whatsapp/threads/${id}/notes`, {
-    method: 'POST',
-    body: JSON.stringify({ agent_id: agentId, note_text: noteText }),
-  })
-  return data.note
+  const { data, error } = await supabase
+    .from('whatsapp_internal_notes')
+    .insert({ thread_id: id, agent_id: agentId, note_text: noteText } as never)
+    .select('*, agents(full_name)')
+    .single()
+
+  if (error) throw error
+  return data as WhatsAppInternalNoteRow
 }
 
 export async function closeWhatsAppThread(id: string): Promise<WhatsAppThreadRow> {
-  const data = await apiFetch<{ thread: WhatsAppThreadRow }>(`/api/whatsapp/threads/${id}/close`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  })
-  return data.thread
+  const { data, error } = await supabase
+    .from('whatsapp_threads')
+    .update({ status: 'closed', updated_at: new Date().toISOString() } as never)
+    .eq('id', id)
+    .select('*, leads(name, phone), agents(full_name)')
+    .single()
+
+  if (error) throw error
+  return data as WhatsAppThreadRow
 }

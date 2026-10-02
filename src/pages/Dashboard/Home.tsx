@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase, type Call } from '../../lib/supabase'
-import { Phone, Users, Calendar, Clock, TrendingUp, TrendingDown, Play } from 'lucide-react'
+import { Phone, Users, Calendar, Clock, TrendingUp, TrendingDown, Play, Mic, MicOff } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import OverdueFollowUpsWidget from '../../components/crm/OverdueFollowUpsWidget'
 import DealsSummaryWidget from '../../components/crm/DealsSummaryWidget'
@@ -26,6 +26,9 @@ export default function DashboardHome() {
   const [recentCalls, setRecentCalls] = useState<Call[]>([])
   const [loading, setLoading] = useState(true)
   const [testCallLoading, setTestCallLoading] = useState(false)
+  const [vapiActive, setVapiActive] = useState(false)
+  const [vapiLoading, setVapiLoading] = useState(false)
+  const vapiRef = useRef<{ stop: () => void } | null>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -74,6 +77,30 @@ export default function DashboardHome() {
       console.error('Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleVapiTalk() {
+    if (vapiActive) {
+      vapiRef.current?.stop()
+      setVapiActive(false)
+      return
+    }
+    setVapiLoading(true)
+    try {
+      const { default: Vapi } = await import('@vapi-ai/web')
+      const apiKey = import.meta.env.VITE_VAPI_API_KEY
+      const assistantId = '8117fc01-193b-4db8-a4a1-aa69f3555050'
+      const vapi = new Vapi(apiKey)
+      vapiRef.current = vapi
+      vapi.on('call-end', () => setVapiActive(false))
+      await vapi.start(assistantId)
+      setVapiActive(true)
+    } catch (e) {
+      console.error('VAPI browser call error:', e)
+      alert('Could not start voice session. Check mic permissions.')
+    } finally {
+      setVapiLoading(false)
     }
   }
 
@@ -138,6 +165,35 @@ export default function DashboardHome() {
           Welcome back, {agent?.full_name?.split(' ')[0] || 'Agent'}! 👋
         </h1>
         <p className="text-slate-600 mt-1">Here's what's happening with your leads today.</p>
+      </div>
+
+      {/* VAPI Browser Talk Button */}
+      <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">AI Voice Agent — Live Demo</h3>
+            <p className="text-violet-100 text-sm">
+              {vapiActive ? 'Listening… speak now' : 'Click to talk to your AI agent directly in the browser — no phone needed'}
+            </p>
+          </div>
+          <button
+            onClick={handleVapiTalk}
+            disabled={vapiLoading}
+            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all ${
+              vapiActive
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : 'bg-white hover:bg-violet-50'
+            } disabled:opacity-50`}
+          >
+            {vapiLoading ? (
+              <div className="w-6 h-6 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+            ) : vapiActive ? (
+              <MicOff className="w-7 h-7 text-white" />
+            ) : (
+              <Mic className="w-7 h-7 text-violet-600" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Test Call Button */}

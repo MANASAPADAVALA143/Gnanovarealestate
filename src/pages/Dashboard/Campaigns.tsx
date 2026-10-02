@@ -97,7 +97,8 @@ export default function Campaigns() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/campaigns/${campaignId}/start`, {
+      const webhookBase = import.meta.env.VITE_WEBHOOK_URL || ''
+      const response = await fetch(`${webhookBase}/api/campaigns/${campaignId}/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,7 +122,8 @@ export default function Campaigns() {
 
   async function handlePauseCampaign(campaignId: string) {
     try {
-      const response = await fetch(`http://localhost:3001/api/campaigns/${campaignId}/pause`, {
+      const webhookBase2 = import.meta.env.VITE_WEBHOOK_URL || ''
+      const response = await fetch(`${webhookBase2}/api/campaigns/${campaignId}/pause`, {
         method: 'POST',
       })
 
@@ -464,7 +466,8 @@ function CreateCampaignModal({
     try {
       setLoading(true)
 
-      const response = await fetch('http://localhost:3001/api/campaigns/create', {
+      const webhookBase3 = import.meta.env.VITE_WEBHOOK_URL || ''
+      const response = await fetch(`${webhookBase3}/api/campaigns/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

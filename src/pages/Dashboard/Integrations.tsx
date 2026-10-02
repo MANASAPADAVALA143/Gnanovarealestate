@@ -222,7 +222,8 @@ export default function Integrations() {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/test/gohighlevel', {
+      const webhookBase = import.meta.env.VITE_WEBHOOK_URL || ''
+      const response = await fetch(`${webhookBase}/api/test/gohighlevel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
