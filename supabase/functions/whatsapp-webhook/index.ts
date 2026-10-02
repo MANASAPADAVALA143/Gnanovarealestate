@@ -1,10 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://mhdnoufdloigblgcypjl.supabase.co'
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('DB_SERVICE_ROLE_KEY')!
 const WHATSAPP_TOKEN = Deno.env.get('WHATSAPP_TOKEN')!
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '1298685323329504'
-const VERIFY_TOKEN = Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'gnanova-verify-2024'
+const VERIFY_TOKEN = Deno.env.get('FACEBOOK_VERIFY_TOKEN') || Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'gnanova-verify-2024'
 
 const AUTO_REPLY = `Hello! Thank you for contacting Gnanova Real Estate. Our team will connect with you shortly. To speak with our AI agent now, reply with YES.`
 
