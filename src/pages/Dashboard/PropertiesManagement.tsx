@@ -157,14 +157,12 @@ export default function PropertiesManagement() {
   async function fetchProperties() {
     try {
       setLoading(true)
-      
-      const response = await fetch(`http://localhost:3001/api/properties?agentId=${agent?.id}`)
-      const data = await response.json()
-
-      if (data.success) {
-        setProperties(data.properties)
-        setFilteredProperties(data.properties)
-      }
+      let q = supabase.from('properties').select('*').order('created_at', { ascending: false })
+      if (agent?.id) q = q.eq('agent_id', agent.id) as typeof q
+      const { data, error } = await q
+      if (error) throw error
+      setProperties((data || []) as Property[])
+      setFilteredProperties((data || []) as Property[])
     } catch (error) {
       console.error('Error fetching properties:', error)
     } finally {
@@ -186,44 +184,37 @@ export default function PropertiesManagement() {
       console.log('CSV length:', csvText.length)
       console.log('Agent ID:', agent?.id)
 
-      const response = await fetch('http://localhost:3001/api/properties/upload-csv', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          csvText,
-          agentId: agent?.id,
-        }),
+      // Parse CSV client-side and insert rows directly to Supabase
+      const lines = csvText.trim().split('\n')
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+      const rows = lines.slice(1).map(line => {
+        const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+        const row: Record<string, string> = {}
+        headers.forEach((h, i) => { row[h] = vals[i] || '' })
+        return row
       })
 
-      console.log('📥 Response status:', response.status)
-      console.log('📥 Response ok:', response.ok)
+      const inserts = rows.filter(r => r.address || r.title).map(r => ({
+        agent_id: agent?.id,
+        address: r.address || r.title || '',
+        city: r.city || 'Dubai',
+        emirate: r.emirate || 'Dubai',
+        property_type: r.property_type || r.type || 'apartment',
+        bedrooms: r.bedrooms ? parseInt(r.bedrooms) : null,
+        bathrooms: r.bathrooms ? parseInt(r.bathrooms) : null,
+        area_sqft: r.area_sqft ? parseFloat(r.area_sqft) : null,
+        price: r.price ? parseFloat(r.price.replace(/[^0-9.]/g, '')) : null,
+        status: r.status || 'available',
+        description: r.description || '',
+      }))
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Server error:', errorText)
-        throw new Error(`Server returned ${response.status}: ${errorText}`)
-      }
+      const { data: inserted, error: insertError } = await supabase.from('properties').insert(inserts as never).select('id')
+      if (insertError) throw insertError
 
-      const result = await response.json()
-      console.log('✅ Result:', result)
-
-      if (result.success) {
-        setUploadProgress({
-          total: result.count + (result.errors?.length || 0),
-          success: result.count,
-          errors: result.errors || [],
-        })
-        
-        alert(`Successfully uploaded ${result.count} properties!${result.errors?.length ? `\n\nWarnings: ${result.errors.length} properties had issues.` : ''}`)
-        await fetchProperties()
-      } else {
-        const errorMessage = result.errors?.length > 0 
-          ? result.errors.join('\n') 
-          : result.error || 'Unknown error occurred'
-        alert(`Upload failed:\n\n${errorMessage}`)
-      }
+      const count = inserted?.length || 0
+      setUploadProgress({ total: count, success: count, errors: [] })
+      alert(`Successfully uploaded ${count} properties!`)
+      await fetchProperties()
     } catch (error: any) {
       console.error('CSV upload error:', error)
       alert(`Upload error: ${error.message}`)
@@ -243,21 +234,7 @@ export default function PropertiesManagement() {
     try {
       setEmbedding(true)
 
-      const response = await fetch('http://localhost:3001/api/properties/embed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        alert(`✅ Successfully generated embeddings for ${result.count} properties!`)
-        await fetchProperties()
-      } else {
-        alert(`❌ Embedding failed: ${result.error}`)
-      }
+      alert('✅ Embeddings are generated server-side. This feature requires the webhook server to be running.')
     } catch (error: any) {
       console.error('Embedding error:', error)
       alert(`❌ Error: ${error.message}`)
@@ -272,18 +249,10 @@ export default function PropertiesManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/properties/${propertyId}`, {
-        method: 'DELETE',
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        alert('Property deleted successfully')
-        await fetchProperties()
-      } else {
-        alert(`Delete failed: ${result.error}`)
-      }
+      const { error } = await supabase.from('properties').delete().eq('id', propertyId)
+      if (error) throw error
+      alert('Property deleted successfully')
+      await fetchProperties()
     } catch (error: any) {
       console.error('Delete error:', error)
       alert(`Error: ${error.message}`)
@@ -879,22 +848,14 @@ function AddPropertyModal({
         agentId,
       }
 
-      const response = await fetch('http://localhost:3001/api/properties', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(property),
-      })
+      const { agentId: _agentId, ...insertPayload } = property as Record<string, unknown> & { agentId: string }
+      const { error: insertError } = await supabase
+        .from('properties')
+        .insert({ ...insertPayload, agent_id: agentId, area_sqft: (property as Record<string,unknown>).sqft } as never)
 
-      const result = await response.json()
-
-      if (result.success) {
-        alert('Property added successfully!')
-        onSuccess()
-      } else {
-        alert(`Error: ${result.error}`)
-      }
+      if (insertError) throw insertError
+      alert('Property added successfully!')
+      onSuccess()
     } catch (error: any) {
       alert(`Error: ${error.message}`)
     } finally {

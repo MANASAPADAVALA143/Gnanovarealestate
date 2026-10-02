@@ -262,7 +262,8 @@ export default function ListingWriter() {
       formData.append('file', file)
       formData.append('agentId', agent?.id || '')
 
-      const response = await fetch('http://localhost:3001/api/listing-writer/parse-document', {
+      const webhookBase = import.meta.env.VITE_WEBHOOK_URL || ''
+      const response = await fetch(`${webhookBase}/api/listing-writer/parse-document`, {
         method: 'POST',
         body: formData,
       })
@@ -318,7 +319,8 @@ export default function ListingWriter() {
     try {
       setGenerating(true)
 
-      const response = await fetch('http://localhost:3001/api/listing-writer/generate', {
+      const webhookBase2 = import.meta.env.VITE_WEBHOOK_URL || ''
+      const response = await fetch(`${webhookBase2}/api/listing-writer/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

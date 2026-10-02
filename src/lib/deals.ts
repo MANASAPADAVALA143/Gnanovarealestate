@@ -1,4 +1,7 @@
-function webhookBaseUrl(): string {
+import { supabase } from './supabase'
+
+// Keep for any remaining consumers that imported this helper
+export function webhookBaseUrlFromEnv(): string {
   if (typeof import.meta !== 'undefined') {
     const env = (import.meta as ImportMeta & { env?: Record<string, string> }).env
     const fromEnv = env?.VITE_WEBHOOK_URL?.replace(/\/$/, '')
@@ -6,12 +9,6 @@ function webhookBaseUrl(): string {
   }
   return 'http://localhost:3001'
 }
-
-export function webhookBaseUrlFromEnv(): string {
-  return webhookBaseUrl()
-}
-
-const WEBHOOK_BASE = webhookBaseUrl()
 
 export const DEAL_STAGES = [
   'viewing',
@@ -104,51 +101,111 @@ export function formatAed(amount: number | null | undefined): string {
   }).format(amount)
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${WEBHOOK_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  })
-  const json = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error(json.error || `Request failed (${res.status})`)
-  }
-  return json as T
-}
-
 export async function fetchDeals(agentId?: string | null): Promise<DealRow[]> {
-  const params = new URLSearchParams()
-  if (agentId) params.set('agent_id', agentId)
-  const q = params.toString()
-  const data = await apiFetch<{ deals: DealRow[] }>(`/api/deals${q ? `?${q}` : ''}`)
-  return data.deals
+  let q = supabase
+    .from('deals')
+    .select('*, leads(name, phone), agents(full_name)')
+    .order('updated_at', { ascending: false })
+
+  if (agentId) q = q.eq('agent_id', agentId) as typeof q
+
+  const { data, error } = await q
+  if (error) throw error
+  return (data || []) as DealRow[]
 }
 
 export async function fetchDeal(id: string): Promise<{ deal: DealRow; activities: DealActivity[] }> {
-  return apiFetch(`/api/deals/${id}`)
+  const [dealRes, activitiesRes] = await Promise.all([
+    supabase
+      .from('deals')
+      .select('*, leads(name, phone), agents(full_name)')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('deal_activities')
+      .select('*')
+      .eq('deal_id', id)
+      .order('created_at', { ascending: false }),
+  ])
+
+  if (dealRes.error) throw dealRes.error
+  return {
+    deal: dealRes.data as DealRow,
+    activities: (activitiesRes.data || []) as DealActivity[],
+  }
 }
 
 export async function createDeal(payload: Record<string, unknown>): Promise<DealRow> {
-  const data = await apiFetch<{ deal: DealRow }>('/api/deals', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-  return data.deal
+  const { data, error } = await supabase
+    .from('deals')
+    .insert(payload as never)
+    .select('*, leads(name, phone), agents(full_name)')
+    .single()
+
+  if (error) throw error
+  return data as DealRow
 }
 
 export async function updateDeal(
   id: string,
   payload: Record<string, unknown>
 ): Promise<DealRow> {
-  const data = await apiFetch<{ deal: DealRow }>(`/api/deals/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
-  })
-  return data.deal
+  const { data, error } = await supabase
+    .from('deals')
+    .update({ ...payload, updated_at: new Date().toISOString() } as never)
+    .eq('id', id)
+    .select('*, leads(name, phone), agents(full_name)')
+    .single()
+
+  if (error) throw error
+  return data as DealRow
 }
 
 export async function fetchDealsSummary(): Promise<DealsSummary> {
-  return apiFetch<DealsSummary>('/api/deals/summary')
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString()
+
+  const { data: deals, error } = await supabase
+    .from('deals')
+    .select('sale_value, agent_commission, stage, agent_id, agents(full_name)')
+    .gte('created_at', monthStart)
+    .lte('created_at', monthEnd)
+
+  if (error) throw error
+
+  const rows = (deals || []) as Array<{
+    sale_value: number | null
+    agent_commission: number | null
+    stage: string
+    agent_id: string | null
+    agents: { full_name: string | null } | null
+  }>
+
+  const totalSales = rows.filter(d => d.stage === 'closed_won').reduce((s, d) => s + (d.sale_value || 0), 0)
+  const commissionEarned = rows.filter(d => d.stage === 'closed_won').reduce((s, d) => s + (d.agent_commission || 0), 0)
+  const commissionPending = rows.filter(d => d.stage !== 'closed_won' && d.stage !== 'closed_lost').reduce((s, d) => s + (d.agent_commission || 0), 0)
+
+  const agentMap = new Map<string, { full_name: string | null; sale_value: number }>()
+  for (const d of rows.filter(r => r.stage === 'closed_won' && r.agent_id)) {
+    const existing = agentMap.get(d.agent_id!)
+    if (existing) existing.sale_value += d.sale_value || 0
+    else agentMap.set(d.agent_id!, { full_name: d.agents?.full_name ?? null, sale_value: d.sale_value || 0 })
+  }
+
+  return {
+    month_start: monthStart,
+    month_end: monthEnd,
+    total_sales: totalSales,
+    commission_earned: commissionEarned,
+    commission_pending: commissionPending,
+    deals_won: rows.filter(d => d.stage === 'closed_won').length,
+    deals_lost: rows.filter(d => d.stage === 'closed_lost').length,
+    top_agents: Array.from(agentMap.entries())
+      .map(([agent_id, v]) => ({ agent_id, ...v }))
+      .sort((a, b) => b.sale_value - a.sale_value)
+      .slice(0, 5),
+  }
 }
 
 export async function fetchDealActivities(dealId: string): Promise<DealActivity[]> {
@@ -161,5 +218,11 @@ export async function addDealNote(
   note: string,
   agentId?: string | null
 ): Promise<void> {
-  await updateDeal(dealId, { note, updated_by: agentId ?? null })
+  const { error } = await supabase.from('deal_activities').insert({
+    deal_id: dealId,
+    activity_type: 'note',
+    description: note,
+    created_by: agentId ?? null,
+  } as never)
+  if (error) throw error
 }
