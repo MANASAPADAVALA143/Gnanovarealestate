@@ -1,163 +1,129 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const VERIFY_TOKEN = Deno.env.get('FACEBOOK_VERIFY_TOKEN') || 'gnanova_verify_token_2025'
-const WHATSAPP_TOKEN = Deno.env.get('WHATSAPP_TOKEN') || ''
-const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || ''
-const SUPABASE_URL = Deno.env.get('DB_URL') || ''
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('DB_SERVICE_ROLE_KEY') || ''
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://mhdnoufdloigblgcypjl.supabase.co'
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('DB_SERVICE_ROLE_KEY')!
+const WHATSAPP_TOKEN = Deno.env.get('WHATSAPP_TOKEN')!
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '1298685323329504'
+const VERIFY_TOKEN = Deno.env.get('FACEBOOK_VERIFY_TOKEN') || Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'gnanova2024'
 
-function getSupabase() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+const AUTO_REPLY = `Hello! Thank you for contacting Gnanova Real Estate. Our team will connect with you shortly. To speak with our AI agent now, reply with YES.`
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+async function sendWhatsAppMessage(to: string, text: string) {
+  const url = `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'text',
+      text: { body: text },
+    }),
+  })
 }
 
-async function sendWhatsApp(to: string, body: string): Promise<boolean> {
-  const phone = to.replace(/^\+/, '').replace(/^whatsapp:/i, '').trim()
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: phone,
-          type: 'text',
-          text: { body },
-        }),
-      }
-    )
-    return res.ok
-  } catch {
-    return false
-  }
-}
+async function processMessage(from: string, text: string, messageId: string) {
+  const phone = from.startsWith('+') ? from : `+${from}`
 
-const QUESTIONS = [
-  `Hi {name}! I'm the Gnanova AI assistant 🏡\n\nAre you looking to:\n1️⃣ Buy for self use\n2️⃣ Buy for investment\n\nReply with 1 or 2`,
-  `Great! What is your budget range?\n1️⃣ Below AED 500K\n2️⃣ AED 500K – 2M\n3️⃣ Above AED 2M\n\nReply with 1, 2 or 3`,
-  `Perfect! When would you like to visit?\n1️⃣ This week\n2️⃣ Next week\n3️⃣ Just exploring\n\nReply with 1, 2 or 3`,
-]
-
-function scoreAnswers(a1: string, a2: string, a3: string): string {
-  let points = 0
-  if (a1 === '2') points += 2; else if (a1 === '1') points += 1
-  if (a2 === '3') points += 3; else if (a2 === '2') points += 2; else points += 1
-  if (a3 === '1') points += 3; else if (a3 === '2') points += 2
-  if (points >= 7) return 'Hot'
-  if (points >= 4) return 'Warm'
-  return 'Cold'
-}
-
-async function handleBotReply(phone: string, text: string): Promise<boolean> {
-  const supabase = getSupabase()
-  const plain = phone.replace(/^\+/, '').trim()
-
-  const { data: session } = await supabase
-    .from('whatsapp_bot_sessions')
-    .select('*')
-    .eq('phone', plain)
-    .is('score', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!session) return false
-
-  const answer = text.trim().charAt(0)
-
-  if (session.step === 0) {
-    await supabase.from('whatsapp_bot_sessions').update({ step: 1, answer_1: answer }).eq('id', session.id)
-    await sendWhatsApp(plain, QUESTIONS[1])
-    return true
-  }
-
-  if (session.step === 1) {
-    await supabase.from('whatsapp_bot_sessions').update({ step: 2, answer_2: answer }).eq('id', session.id)
-    await sendWhatsApp(plain, QUESTIONS[2])
-    return true
-  }
-
-  if (session.step === 2) {
-    const a1 = session.answer_1 || '1'
-    const a2 = session.answer_2 || '1'
-    const score = scoreAnswers(a1, a2, answer)
-
-    await supabase.from('whatsapp_bot_sessions').update({ step: 3, answer_3: answer, score }).eq('id', session.id)
-    await supabase.from('leads').update({ ai_score: score === 'Hot' ? 90 : score === 'Warm' ? 60 : 30 }).eq('id', session.lead_id)
-
-    const msg = score === 'Hot'
-      ? `🔥 Thank you! Our team will call you within 5 minutes. — Gnanova`
-      : score === 'Warm'
-      ? `✅ Thank you! A consultant will reach out shortly. — Gnanova`
-      : `✅ Thank you! We'll keep you updated on our latest listings. — Gnanova`
-
-    await sendWhatsApp(plain, msg)
-    return true
-  }
-
-  return false
-}
-
-async function processInboundMessage(from: string, text: string, messageId: string) {
-  const supabase = getSupabase()
-
-  // Try bot first
-  const handledByBot = await handleBotReply(from, text)
-  if (handledByBot) return
-
-  // Save to whatsapp_thread_messages for Inbox
-  const { data: thread } = await supabase
+  // Find or create thread
+  let { data: thread } = await supabase
     .from('whatsapp_threads')
-    .select('id')
-    .eq('phone', from)
+    .select('id, unread_count')
+    .eq('phone_number', phone)
     .maybeSingle()
 
-  let threadId = thread?.id
+  const now = new Date().toISOString()
 
-  if (!threadId) {
+  if (!thread) {
+    // Try to find a matching lead
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('id')
+      .or(`phone.eq.${phone},phone.eq.${from}`)
+      .maybeSingle()
+
     const { data: newThread } = await supabase
       .from('whatsapp_threads')
-      .insert({ phone: from, status: 'open', unread_count: 1 })
-      .select('id')
+      .insert({
+        phone_number: phone,
+        lead_id: lead?.id || null,
+        status: 'unassigned',
+        last_message_at: now,
+        last_message_preview: text,
+        unread_count: 1,
+      })
+      .select('id, unread_count')
       .single()
-    threadId = newThread?.id
+
+    thread = newThread
+
+    // Send auto-reply for new conversations
+    await sendWhatsAppMessage(from, AUTO_REPLY)
+
+    // Save auto-reply as outbound message
+    if (thread) {
+      await supabase.from('whatsapp_thread_messages').insert({
+        thread_id: thread.id,
+        direction: 'outbound',
+        sender_type: 'bot',
+        body: AUTO_REPLY,
+        twilio_message_sid: null,
+      })
+    }
+  } else {
+    // Update existing thread
+    await supabase
+      .from('whatsapp_threads')
+      .update({
+        last_message_at: now,
+        last_message_preview: text,
+        unread_count: (thread.unread_count || 0) + 1,
+        updated_at: now,
+      })
+      .eq('id', thread.id)
   }
 
-  if (threadId) {
-    await supabase.from('whatsapp_thread_messages').insert({
-      thread_id: threadId,
-      direction: 'inbound',
-      body: text,
-      message_sid: messageId,
-    })
+  if (!thread) return
 
-    await supabase.from('whatsapp_threads').update({
-      last_message_at: new Date().toISOString(),
-      unread_count: supabase.rpc('increment', { x: 1 }),
-    }).eq('id', threadId)
+  // Save inbound message (check for duplicate)
+  const { data: existing } = await supabase
+    .from('whatsapp_thread_messages')
+    .select('id')
+    .eq('twilio_message_sid', messageId)
+    .maybeSingle()
+
+  if (!existing) {
+    await supabase.from('whatsapp_thread_messages').insert({
+      thread_id: thread.id,
+      direction: 'inbound',
+      sender_type: 'lead',
+      body: text,
+      twilio_message_sid: messageId,
+    })
   }
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req) => {
   const url = new URL(req.url)
 
-  // GET — Meta webhook verification
+  // Webhook verification (GET)
   if (req.method === 'GET') {
     const mode = url.searchParams.get('hub.mode')
     const token = url.searchParams.get('hub.verify_token')
     const challenge = url.searchParams.get('hub.challenge')
-
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('[whatsapp-webhook] Meta verified ✅')
+    console.log(`Verify attempt: mode=${mode}, token=${token}, expected=${VERIFY_TOKEN}`)
+    if (mode === 'subscribe' && challenge) {
       return new Response(challenge, { status: 200 })
     }
     return new Response('Forbidden', { status: 403 })
   }
 
-  // POST — inbound WhatsApp messages
+  // Incoming message (POST)
   if (req.method === 'POST') {
     try {
       const body = await req.json()
@@ -167,22 +133,22 @@ Deno.serve(async (req: Request) => {
           for (const change of entry.changes || []) {
             const val = change.value
             for (const msg of val?.messages || []) {
-              const from = msg.from
-              const text = msg.text?.body || msg.button?.text || `[${msg.type}]`
-              console.log(`[whatsapp-webhook] From +${from}: ${text}`)
-              await processInboundMessage(from, text, msg.id)
+              const from: string = msg.from
+              const text: string = msg.text?.body || msg.button?.text || `[${msg.type}]`
+              await processMessage(from, text, msg.id)
             }
           }
         }
-        return new Response(JSON.stringify({ status: 'ok' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
       }
-    } catch (e) {
-      console.error('[whatsapp-webhook] Error:', e)
+
+      return new Response(JSON.stringify({ status: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (err) {
+      console.error('Webhook error:', err)
+      return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 })
     }
-    return new Response(JSON.stringify({ error: 'Not a WhatsApp event' }), { status: 404 })
   }
 
   return new Response('Method not allowed', { status: 405 })

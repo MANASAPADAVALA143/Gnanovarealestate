@@ -136,6 +136,13 @@ export async function replyWhatsAppThread(
 ): Promise<{ thread: WhatsAppThreadRow; message: WhatsAppThreadMessageRow }> {
   const now = new Date().toISOString()
 
+  // Get thread phone number for WhatsApp delivery
+  const { data: threadData } = await supabase
+    .from('whatsapp_threads')
+    .select('phone_number')
+    .eq('id', id)
+    .single()
+
   const { data: msg, error: msgError } = await supabase
     .from('whatsapp_thread_messages')
     .insert({
@@ -158,6 +165,20 @@ export async function replyWhatsAppThread(
     .single()
 
   if (threadError) throw threadError
+
+  // Deliver via WhatsApp Cloud API through Edge Function
+  if (threadData?.phone_number) {
+    const to = threadData.phone_number.replace('+', '')
+    try {
+      await fetch('https://mhdnoufdloigblgcypjl.supabase.co/functions/v1/whatsapp-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, message: body }),
+      })
+    } catch {
+      // Non-fatal: message saved to CRM even if WhatsApp delivery fails
+    }
+  }
 
   return { thread: thread as WhatsAppThreadRow, message: msg as WhatsAppThreadMessageRow }
 }
