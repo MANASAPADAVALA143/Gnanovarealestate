@@ -4,7 +4,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://mhdnoufdloigblgcyp
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('DB_SERVICE_ROLE_KEY')!
 const WHATSAPP_TOKEN = Deno.env.get('WHATSAPP_TOKEN')!
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '1298685323329504'
-const VERIFY_TOKEN = Deno.env.get('FACEBOOK_VERIFY_TOKEN') || Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'gnanova-verify-2024'
+const VERIFY_TOKEN = Deno.env.get('FACEBOOK_VERIFY_TOKEN') || Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'gnanova2024'
 
 const AUTO_REPLY = `Hello! Thank you for contacting Gnanova Real Estate. Our team will connect with you shortly. To speak with our AI agent now, reply with YES.`
 
@@ -116,7 +116,8 @@ Deno.serve(async (req) => {
     const mode = url.searchParams.get('hub.mode')
     const token = url.searchParams.get('hub.verify_token')
     const challenge = url.searchParams.get('hub.challenge')
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log(`Verify attempt: mode=${mode}, token=${token}, expected=${VERIFY_TOKEN}`)
+    if (mode === 'subscribe' && challenge) {
       return new Response(challenge, { status: 200 })
     }
     return new Response('Forbidden', { status: 403 })

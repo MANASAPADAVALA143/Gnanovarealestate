@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { startBotForLead } from '../server/lib/whatsapp-bot.ts'
 
 export type CrmOnLeadCreatedParams = {
   leadId: string
@@ -108,6 +109,20 @@ export async function onLeadCreated(
         console.error('[crm] follow-up task insert failed:', e)
       }
     }
+  }
+
+  // Start WhatsApp qualification bot for leads with a phone number
+  try {
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('name, phone')
+      .eq('id', leadId)
+      .maybeSingle()
+    if (lead?.phone) {
+      void startBotForLead(leadId, lead.name || 'there', lead.phone)
+    }
+  } catch (e) {
+    console.error('[crm] whatsapp bot start failed:', e)
   }
 }
 

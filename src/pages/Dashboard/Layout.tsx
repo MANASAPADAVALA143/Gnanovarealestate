@@ -29,6 +29,14 @@ import {
   Shield,
   TrendingUp,
   CreditCard,
+  Building2,
+  Facebook,
+  Receipt,
+  Sun,
+  Upload,
+  LayoutDashboard as OwnerIcon,
+  FileText as InvoiceIcon,
+  ScrollText,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -60,6 +68,18 @@ export default function DashboardLayout() {
     { name: 'Inbox', href: '/dashboard/inbox', icon: MessageCircle },
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },
+    { name: 'Suite Inventory', href: '/dashboard/suites', icon: Building2 },
+    { name: 'Payment Tracker', href: '/dashboard/payment-tracker', icon: Receipt },
+    ...(showAdminNav
+      ? [
+          { name: 'Owner Dashboard', href: '/dashboard/owner-dashboard', icon: OwnerIcon },
+          { name: 'Invoices', href: '/dashboard/invoices', icon: InvoiceIcon },
+          { name: 'Agreements', href: '/dashboard/agreements', icon: ScrollText },
+        ]
+      : []),
+    { name: 'Facebook Leads', href: '/dashboard/facebook-leads', icon: Facebook },
+    { name: 'WhatsApp Bot', href: '/dashboard/whatsapp-bot', icon: MessageCircle },
+    { name: 'Daily Summary', href: '/dashboard/daily-summary', icon: Sun },
     { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
     { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
     { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
@@ -73,6 +93,7 @@ export default function DashboardLayout() {
           { name: 'Admin', href: '/dashboard/admin', icon: Shield },
         ]
       : []),
+    { name: 'Data Migration', href: '/dashboard/data-migration', icon: Upload },
     { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ]
