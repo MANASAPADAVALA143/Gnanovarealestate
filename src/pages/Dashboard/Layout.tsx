@@ -37,6 +37,9 @@ import {
   LayoutDashboard as OwnerIcon,
   FileText as InvoiceIcon,
   ScrollText,
+  Star,
+  Bot,
+  FileText as DocIcon,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -69,6 +72,9 @@ export default function DashboardLayout() {
     { name: 'Calls', href: '/dashboard/calls', icon: Phone },
     { name: 'Properties', href: '/dashboard/properties', icon: Home },
     { name: 'Suite Inventory', href: '/dashboard/suites', icon: Building2 },
+    { name: 'Club Membership', href: '/dashboard/club-membership', icon: Star },
+    { name: 'Bot Config', href: '/dashboard/bot-configuration', icon: Bot },
+    { name: 'Documents', href: '/dashboard/documents', icon: DocIcon },
     { name: 'Payment Tracker', href: '/dashboard/payment-tracker', icon: Receipt },
     ...(showAdminNav
       ? [

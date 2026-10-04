@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase, type Call } from '../../lib/supabase'
-import { Phone, Users, Calendar, Clock, TrendingUp, TrendingDown, Play, Mic } from 'lucide-react'
+import { Phone, Users, Calendar, Clock, TrendingUp, TrendingDown, Play, Mic, MicOff } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import OverdueFollowUpsWidget from '../../components/crm/OverdueFollowUpsWidget'
 import DealsSummaryWidget from '../../components/crm/DealsSummaryWidget'
@@ -27,6 +27,9 @@ export default function DashboardHome() {
   const [loading, setLoading] = useState(true)
   const [testCallLoading, setTestCallLoading] = useState(false)
   const [bolnaLoading, setBolnaLoading] = useState(false)
+  const [vapiActive, setVapiActive] = useState(false)
+  const [vapiLoading, setVapiLoading] = useState(false)
+  const vapiRef = useRef<{ stop: () => void } | null>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -112,6 +115,30 @@ export default function DashboardHome() {
     }
   }
 
+  async function handleVapiTalk() {
+    if (vapiActive) {
+      vapiRef.current?.stop()
+      setVapiActive(false)
+      return
+    }
+    setVapiLoading(true)
+    try {
+      const { default: Vapi } = await import('@vapi-ai/web')
+      const apiKey = import.meta.env.VITE_VAPI_API_KEY
+      const assistantId = '8117fc01-193b-4db8-a4a1-aa69f3555050'
+      const vapi = new Vapi(apiKey)
+      vapiRef.current = vapi
+      vapi.on('call-end', () => setVapiActive(false))
+      await vapi.start(assistantId)
+      setVapiActive(true)
+    } catch (e) {
+      console.error('VAPI browser call error:', e)
+      alert('Could not start voice session. Check mic permissions.')
+    } finally {
+      setVapiLoading(false)
+    }
+  }
+
   async function handleTestCall() {
     const phoneNumber = prompt('Enter your phone number (with country code, e.g. +1234567890):')
     
@@ -175,26 +202,56 @@ export default function DashboardHome() {
         <p className="text-slate-600 mt-1">Here's what's happening with your suite bookings today.</p>
       </div>
 
-      {/* Bolna AI Call Button */}
-      <div className="bg-gradient-to-r from-amber-600 to-yellow-500 rounded-xl p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold mb-1">Bolna AI Voice Agent — Telugu Support</h3>
-            <p className="text-amber-100 text-sm">
-              Call a guest via AI — speaks Telugu &amp; English. Enter their number to initiate.
-            </p>
+      {/* AI Voice Agents — two cards side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* VAPI — Global / English */}
+        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold mb-1">VAPI — Global Agent</h3>
+              <p className="text-violet-100 text-xs">
+                {vapiActive ? 'Listening… speak now' : 'Browser call — English / International leads'}
+              </p>
+            </div>
+            <button
+              onClick={handleVapiTalk}
+              disabled={vapiLoading}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all ${
+                vapiActive ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-white hover:bg-violet-50'
+              } disabled:opacity-50`}
+            >
+              {vapiLoading ? (
+                <div className="w-5 h-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+              ) : vapiActive ? (
+                <MicOff className="w-6 h-6 text-white" />
+              ) : (
+                <Mic className="w-6 h-6 text-violet-600" />
+              )}
+            </button>
           </div>
-          <button
-            onClick={handleBolnaCall}
-            disabled={bolnaLoading}
-            className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg bg-white hover:bg-amber-50 disabled:opacity-50 transition-all"
-          >
-            {bolnaLoading ? (
-              <div className="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Mic className="w-7 h-7 text-amber-600" />
-            )}
-          </button>
+        </div>
+
+        {/* Bolna — Telugu / India */}
+        <div className="bg-gradient-to-r from-amber-600 to-yellow-500 rounded-xl p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold mb-1">Bolna — Telugu Agent</h3>
+              <p className="text-amber-100 text-xs">
+                Outbound call — Telugu &amp; English, India guests
+              </p>
+            </div>
+            <button
+              onClick={handleBolnaCall}
+              disabled={bolnaLoading}
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg bg-white hover:bg-amber-50 disabled:opacity-50 transition-all"
+            >
+              {bolnaLoading ? (
+                <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Mic className="w-6 h-6 text-amber-600" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
