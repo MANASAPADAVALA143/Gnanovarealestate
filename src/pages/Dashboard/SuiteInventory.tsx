@@ -120,7 +120,7 @@ export default function SuiteInventoryPage() {
   }
 
   const formatAed = (n: number) =>
-    n ? `AED ${n.toLocaleString()}` : '—'
+    n ? `INR ${n.toLocaleString()}` : '—'
 
   return (
     <div className="space-y-6">
@@ -308,7 +308,7 @@ export default function SuiteInventoryPage() {
                     placeholder="500" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Price (AED) *</label>
+                  <label className="text-sm font-medium text-slate-700">Price (INR) *</label>
                   <input required type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })}
                     placeholder="500000" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
@@ -325,12 +325,12 @@ export default function SuiteInventoryPage() {
                     placeholder="Optional" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Payment Received (AED)</label>
+                  <label className="text-sm font-medium text-slate-700">Payment Received (INR)</label>
                   <input type="number" value={form.payment_received} onChange={(e) => setForm({ ...form, payment_received: e.target.value })}
                     placeholder="0" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Balance (AED)</label>
+                  <label className="text-sm font-medium text-slate-700">Balance (INR)</label>
                   <input type="number" value={form.balance_amount} onChange={(e) => setForm({ ...form, balance_amount: e.target.value })}
                     placeholder="0" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>

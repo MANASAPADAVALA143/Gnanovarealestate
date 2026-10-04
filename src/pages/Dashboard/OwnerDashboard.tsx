@@ -18,7 +18,7 @@ import { whatsappLink } from '../../lib/payment-tracker'
 const PIE_COLORS = ['#3b82f6', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#64748b']
 
 function fmt(n: number) {
-  return 'AED ' + n.toLocaleString('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  return 'INR ' + n.toLocaleString('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function KpiCard({

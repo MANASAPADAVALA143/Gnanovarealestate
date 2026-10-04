@@ -1,4 +1,4 @@
-/** UAE property display helpers (district stage, freehold, AED/sqm). */
+/** UAE property display helpers (district stage, freehold, INR/sqm). */
 
 export type DistrictStage = 1 | 2 | 3 | 4
 
@@ -41,7 +41,7 @@ export function getDistrictStageMeta(stage: number | null | undefined) {
 
 export function formatPricePerSqm(value: number | null | undefined): string | null {
   if (value == null || !Number.isFinite(Number(value)) || Number(value) <= 0) return null
-  return `AED ${Math.round(Number(value)).toLocaleString()} / sqm`
+  return `INR ${Math.round(Number(value)).toLocaleString()} / sqm`
 }
 
 export function computePricePerSqm(

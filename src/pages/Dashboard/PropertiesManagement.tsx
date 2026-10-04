@@ -360,7 +360,7 @@ export default function PropertiesManagement() {
             <div>
               <p className="text-sm text-gray-600">Avg Price</p>
               <p className="text-2xl font-bold text-gray-900">
-                AED{' '}
+                INR{' '}
                 {properties.length > 0
                   ? Math.round(
                       properties.reduce((sum, p) => sum + (Number(p.price) || 0), 0) /
@@ -559,7 +559,7 @@ export default function PropertiesManagement() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-semibold text-gray-900">
-                        AED {property.price?.toLocaleString()}
+                        INR {property.price?.toLocaleString()}
                       </p>
                       {planTeasers[property.id] && (
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -794,7 +794,7 @@ function AddPropertyModal({
     const missing: string[] = []
     if (!formData.address.trim()) missing.push('Address')
     if (!formData.city.trim()) missing.push('City')
-    if (!formData.price.trim()) missing.push('Price (AED)')
+    if (!formData.price.trim()) missing.push('Price (INR)')
     if (!formData.bedrooms.trim()) missing.push('Bedrooms')
     if (!formData.bathrooms.trim()) missing.push('Bathrooms')
 
@@ -980,7 +980,7 @@ function AddPropertyModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Price (AED) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Price (INR) *</label>
               <input
                 type="number"
                 value={formData.price}
@@ -1122,7 +1122,7 @@ function AddPropertyModal({
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Service Charge (AED/year)
+                Service Charge (INR/year)
               </label>
               <input
                 type="number"

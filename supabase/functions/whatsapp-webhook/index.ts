@@ -6,7 +6,7 @@ const WHATSAPP_TOKEN = Deno.env.get('WHATSAPP_TOKEN')!
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '1298685323329504'
 const VERIFY_TOKEN = Deno.env.get('FACEBOOK_VERIFY_TOKEN') || Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'gnanova2024'
 
-const AUTO_REPLY = `Hello! Thank you for contacting Gnanova Real Estate. Our team will connect with you shortly. To speak with our AI agent now, reply with YES.`
+const AUTO_REPLY = `Namaste! Thank you for contacting Venkateswara Suite Rooms, Tirupathi. Our team will connect with you shortly. To speak with our AI agent now, reply with YES.`
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 

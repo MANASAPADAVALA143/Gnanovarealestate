@@ -179,7 +179,7 @@ export function LandingHero({ onBookDemo }: BookDemoProps) {
               className="h-[200px] w-full object-cover"
             />
             <div className="p-4">
-              <p className="text-lg font-bold text-white">AED 4.2M</p>
+              <p className="text-lg font-bold text-white">INR 4.2M</p>
               <p className="text-[13px] text-[#94A3B8]">Dubai Marina</p>
               <p className="mt-3 flex items-center gap-2 text-xs text-emerald-400">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -201,7 +201,7 @@ export function LandingHero({ onBookDemo }: BookDemoProps) {
               className="h-20 w-full object-cover"
             />
             <div className="p-2">
-              <p className="text-xs font-bold text-white">AED 2.8M</p>
+              <p className="text-xs font-bold text-white">INR 2.8M</p>
               <p className="text-[10px] text-[#94A3B8]">Palm Jumeirah</p>
             </div>
           </div>
@@ -213,7 +213,7 @@ export function LandingHero({ onBookDemo }: BookDemoProps) {
               className="h-20 w-full object-cover"
             />
             <div className="p-2">
-              <p className="text-xs font-bold text-white">AED 6.5M</p>
+              <p className="text-xs font-bold text-white">INR 6.5M</p>
               <p className="text-[10px] text-[#94A3B8]">Downtown Dubai</p>
             </div>
           </div>
@@ -227,7 +227,7 @@ export function LandingStats() {
   const stats = [
     { value: '< 60 sec', label: 'AI Response Time' },
     { value: '24/7', label: 'AI Coverage' },
-    { value: 'AED 0', label: 'Setup Fee' },
+    { value: 'INR 0', label: 'Setup Fee' },
     { value: '48 hrs', label: 'Go Live Time' },
   ]
   return (
@@ -317,7 +317,7 @@ export function LandingFeatures() {
     {
       emoji: '📊',
       title: 'Smart Pipeline',
-      body: 'Viewing → MOU → SPA → Closed Won. Drag-and-drop. AED values. RERA fields.',
+      body: 'Viewing → MOU → SPA → Closed Won. Drag-and-drop. INR values. RERA fields.',
       badge: '8 Stages',
     },
     {
@@ -335,7 +335,7 @@ export function LandingFeatures() {
     {
       emoji: '💰',
       title: 'Commission & Invoices',
-      body: 'Pending → Approved → Invoice → Payment Run. AED. UAE compliant.',
+      body: 'Pending → Approved → Invoice → Payment Run. INR. UAE compliant.',
       badge: 'Full workflow',
     },
     {
@@ -420,7 +420,7 @@ export function LandingPricing({ onBookDemo }: BookDemoProps) {
   const plans = [
     {
       name: 'Starter',
-      price: 'AED 2,500',
+      price: 'INR 2,500',
       period: '/month',
       blurb: 'For solo agents & small teams',
       features: [
@@ -433,7 +433,7 @@ export function LandingPricing({ onBookDemo }: BookDemoProps) {
     },
     {
       name: 'Professional',
-      price: 'AED 5,500',
+      price: 'INR 5,500',
       period: '/month',
       blurb: 'For growing brokerages',
       features: [
@@ -466,7 +466,7 @@ export function LandingPricing({ onBookDemo }: BookDemoProps) {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold text-white sm:text-4xl">Choose Your Plan</h2>
-            <p className="mt-3 text-[#94A3B8]">AED pricing. No setup fee. Cancel anytime.</p>
+            <p className="mt-3 text-[#94A3B8]">INR pricing. No setup fee. Cancel anytime.</p>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {plans.map((plan) => (
@@ -522,7 +522,7 @@ export function LandingTrust() {
     {
       icon: <Shield className="h-6 w-6 text-emerald-400" />,
       title: 'UAE Compliance',
-      body: 'UAE PDPL compliant. RERA/DLD fields built in. AED currency throughout. Freehold zone tracking.',
+      body: 'UAE PDPL compliant. RERA/DLD fields built in. INR currency throughout. Freehold zone tracking.',
     },
     {
       icon: <Globe className="h-6 w-6 text-[#06B6D4]" />,
@@ -532,7 +532,7 @@ export function LandingTrust() {
     {
       icon: <Star className="h-6 w-6 text-[#F59E0B]" />,
       title: 'Early Access',
-      body: 'Join our founding brokerage programme. Lock in AED 2,500/month forever. First 10 brokerages only.',
+      body: 'Join our founding brokerage programme. Lock in INR 2,500/month forever. First 10 brokerages only.',
     },
   ]
 

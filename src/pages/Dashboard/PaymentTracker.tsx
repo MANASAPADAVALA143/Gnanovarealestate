@@ -91,7 +91,7 @@ export default function PaymentTrackerPage() {
   const overdueCount = payments.filter((p) => p.status === 'Overdue').length
   const todayCount = payments.filter((p) => p.due_date && isToday(new Date(p.due_date))).length
 
-  const formatAed = (n: number) => `AED ${n.toLocaleString()}`
+  const formatAed = (n: number) => `INR ${n.toLocaleString()}`
 
   function generateSchedule() {
     const total = Number(schedForm.total)
@@ -296,12 +296,12 @@ export default function PaymentTrackerPage() {
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Total Price (AED)</label>
+                  <label className="text-sm font-medium text-slate-700">Total Price (INR)</label>
                   <input type="number" value={schedForm.total} onChange={(e) => setSchedForm({ ...schedForm, total: e.target.value })}
                     placeholder="2000000" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Booking Amount (AED)</label>
+                  <label className="text-sm font-medium text-slate-700">Booking Amount (INR)</label>
                   <input type="number" value={schedForm.booking} onChange={(e) => setSchedForm({ ...schedForm, booking: e.target.value })}
                     placeholder="200000" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
@@ -326,7 +326,7 @@ export default function PaymentTrackerPage() {
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-semibold text-slate-700">Payment Schedule</p>
                     <p className="text-xs text-slate-500">
-                      Booking: AED {Number(schedForm.booking).toLocaleString()} + {schedule.length} installments
+                      Booking: INR {Number(schedForm.booking).toLocaleString()} + {schedule.length} installments
                     </p>
                   </div>
                   <div className="space-y-2 max-h-52 overflow-y-auto">
@@ -336,7 +336,7 @@ export default function PaymentTrackerPage() {
                       }`}>
                         <span className="text-sm text-slate-700">Installment #{s.installment}</span>
                         <span className="text-sm text-slate-500">{s.due_date}</span>
-                        <span className="text-sm font-semibold text-slate-900">AED {s.amount.toLocaleString()}</span>
+                        <span className="text-sm font-semibold text-slate-900">INR {s.amount.toLocaleString()}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[s.status]}`}>{s.status}</span>
                       </div>
                     ))}
@@ -375,7 +375,7 @@ export default function PaymentTrackerPage() {
                     placeholder="101" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Total Price (AED)</label>
+                  <label className="text-sm font-medium text-slate-700">Total Price (INR)</label>
                   <input type="number" value={form.total_price} onChange={(e) => setForm({ ...form, total_price: e.target.value })}
                     placeholder="500000" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
@@ -385,7 +385,7 @@ export default function PaymentTrackerPage() {
                     placeholder="1" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-700">Installment Amount (AED) *</label>
+                  <label className="text-sm font-medium text-slate-700">Installment Amount (INR) *</label>
                   <input required type="number" value={form.installment_amount} onChange={(e) => setForm({ ...form, installment_amount: e.target.value })}
                     placeholder="125000" className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>

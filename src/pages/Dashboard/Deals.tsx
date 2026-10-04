@@ -323,7 +323,7 @@ export default function DealsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Sale value (AED)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Sale value (INR)</label>
                   <input
                     type="number"
                     min="0"

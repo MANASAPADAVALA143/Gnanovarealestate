@@ -212,7 +212,7 @@ export default function PaymentRunPage() {
                 <th className="text-left px-4 py-3 font-medium">Broker</th>
                 <th className="text-left px-4 py-3 font-medium">Invoice #</th>
                 <th className="text-left px-4 py-3 font-medium">Deal</th>
-                <th className="text-right px-4 py-3 font-medium">Amount (AED)</th>
+                <th className="text-right px-4 py-3 font-medium">Amount (INR)</th>
                 <th className="text-left px-4 py-3 font-medium">Due Date</th>
                 <th className="text-right px-4 py-3 font-medium">Days Overdue</th>
               </tr>
@@ -349,7 +349,7 @@ export default function PaymentRunPage() {
                   <th className="text-left px-4 py-2 font-medium">Reference</th>
                   <th className="text-left px-4 py-2 font-medium">Method</th>
                   <th className="text-right px-4 py-2 font-medium">Invoices</th>
-                  <th className="text-right px-4 py-2 font-medium">Total (AED)</th>
+                  <th className="text-right px-4 py-2 font-medium">Total (INR)</th>
                   <th className="text-right px-4 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -431,7 +431,7 @@ export default function PaymentRunPage() {
                     <th className="text-left py-2">Broker Name</th>
                     <th className="text-left py-2">Invoice #</th>
                     <th className="text-left py-2">Deal</th>
-                    <th className="text-right py-2">Amount (AED)</th>
+                    <th className="text-right py-2">Amount (INR)</th>
                   </tr>
                 </thead>
                 <tbody>

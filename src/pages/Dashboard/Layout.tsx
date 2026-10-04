@@ -130,10 +130,10 @@ export default function DashboardLayout() {
         {/* Logo */}
         <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-800 px-6">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">G</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xs">VSR</span>
             </div>
-            <span className="text-white font-semibold text-lg">Gnanova</span>
+            <span className="text-white font-semibold text-lg">Venkateswara Suites</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}

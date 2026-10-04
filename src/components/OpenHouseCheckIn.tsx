@@ -200,7 +200,7 @@ export default function OpenHouseCheckIn({ eventId, propertyAddress, agentId }: 
           </div>
           <div>
             <label htmlFor="oh-budget" className="mb-1.5 block text-xs font-medium text-slate-400">
-              Budget (AED)
+              Budget (INR)
             </label>
             <input
               id="oh-budget"
