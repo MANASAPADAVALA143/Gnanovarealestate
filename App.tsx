@@ -37,6 +37,9 @@ import FacebookLeadsPage from './src/pages/Dashboard/FacebookLeads'
 import WhatsAppBotPage from './src/pages/Dashboard/WhatsAppBot'
 import DailySummaryPage from './src/pages/Dashboard/DailySummary'
 import DataMigrationPage from './src/pages/Dashboard/DataMigration'
+import ClubMembershipPage from './src/pages/Dashboard/ClubMembership'
+import BotConfigurationPage from './src/pages/Dashboard/BotConfiguration'
+import DocumentGeneratorPage from './src/pages/Dashboard/DocumentGenerator'
 import VoiceCallCenter from './pages/VoiceCallCenter'
 import PrivacyPolicy from './src/pages/PrivacyPolicy'
 import OpenHouseCheckInPage from './src/pages/OpenHouseCheckInPage'
@@ -144,6 +147,9 @@ function App() {
             <Route path="whatsapp-bot" element={<WhatsAppBotPage />} />
             <Route path="daily-summary" element={<DailySummaryPage />} />
             <Route path="data-migration" element={<DataMigrationPage />} />
+            <Route path="club-membership" element={<ClubMembershipPage />} />
+            <Route path="bot-configuration" element={<BotConfigurationPage />} />
+            <Route path="documents" element={<DocumentGeneratorPage />} />
             <Route path="listing-writer" element={<ListingWriter />} />
             <Route path="campaigns" element={<CampaignsPage />} />
             <Route path="appointments" element={<AppointmentsPage />} />

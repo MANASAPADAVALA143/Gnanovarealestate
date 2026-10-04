@@ -99,7 +99,7 @@ function generatePDF(inv: InvoiceRecord): jsPDF {
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
   doc.text('Description', margin + 4, y + 6)
-  doc.text('Amount (AED)', W - margin - 4, y + 6, { align: 'right' })
+  doc.text('Amount (INR)', W - margin - 4, y + 6, { align: 'right' })
 
   y += 9
 
@@ -134,7 +134,7 @@ function generatePDF(inv: InvoiceRecord): jsPDF {
   doc.setFont('helvetica', 'bold')
   doc.text('TOTAL PAID', W - margin - 66, y + 6)
   doc.text(
-    `AED ${inv.amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`,
+    `INR ${inv.amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`,
     W - margin - 4,
     y + 6,
     { align: 'right' }
@@ -200,7 +200,7 @@ export default function InvoiceGeneratorPage() {
 
   function handleWhatsApp(inv: InvoiceRecord) {
     if (!inv.customer_phone) { showToast('No phone number'); return }
-    const msg = `Hi ${inv.customer_name}, please find your payment receipt ${inv.invoice_number} for AED ${inv.amount.toLocaleString()} paid on ${inv.payment_date}. Thank you — Gnanova Real Estate.`
+    const msg = `Hi ${inv.customer_name}, please find your payment receipt ${inv.invoice_number} for INR ${inv.amount.toLocaleString()} paid on ${inv.payment_date}. Thank you — Gnanova Real Estate.`
     window.open(whatsappLink(inv.customer_phone, msg), '_blank')
   }
 
@@ -284,7 +284,7 @@ export default function InvoiceGeneratorPage() {
                   <th className="text-left px-4 py-3 font-medium">Invoice #</th>
                   <th className="text-left px-4 py-3 font-medium">Customer</th>
                   <th className="text-left px-4 py-3 font-medium">Suite</th>
-                  <th className="text-right px-4 py-3 font-medium">Amount (AED)</th>
+                  <th className="text-right px-4 py-3 font-medium">Amount (INR)</th>
                   <th className="text-left px-4 py-3 font-medium">Date</th>
                   <th className="text-left px-4 py-3 font-medium">UTR</th>
                   <th className="text-right px-4 py-3 font-medium">Actions</th>
@@ -366,7 +366,7 @@ export default function InvoiceGeneratorPage() {
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="A-101" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Amount (AED) *</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Amount (INR) *</label>
                   <input required type="number" min="0" step="0.01" value={fAmount} onChange={(e) => setFAmount(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="50000" />
                 </div>

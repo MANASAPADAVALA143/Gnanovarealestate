@@ -25,7 +25,7 @@ const SCORE_STYLE = {
 const STEP_LABEL = ['Sent Q1', 'Sent Q2', 'Sent Q3', 'Completed']
 
 const INTENT = ['—', 'Self Use', 'Investment']
-const BUDGET = ['—', 'Below AED 500K', 'AED 500K–2M', 'Above AED 2M']
+const BUDGET = ['—', 'Below INR 500K', 'INR 500K–2M', 'Above INR 2M']
 const TIMELINE = ['—', 'This week', 'Next week', 'Just exploring']
 
 export default function WhatsAppBotPage() {

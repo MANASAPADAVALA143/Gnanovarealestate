@@ -454,7 +454,7 @@ export default function ListingWriter() {
                   const label = p.title || p.address || 'Untitled'
                   const loc = [p.address, p.city].filter(Boolean).join(', ') || '—'
                   const price =
-                    p.price != null ? `AED ${Number(p.price).toLocaleString()}` : 'AED —'
+                    p.price != null ? `INR ${Number(p.price).toLocaleString()}` : 'INR —'
                   return (
                     <option key={p.id} value={p.id}>
                       {label} — {loc} — {price}
@@ -508,7 +508,7 @@ export default function ListingWriter() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               <DollarSign className="w-4 h-4 inline mr-1" />
-              Price (AED)
+              Price (INR)
             </label>
             <input
               type="text"

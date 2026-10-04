@@ -112,7 +112,7 @@ export default function MetaAdsPage() {
   }
 
   async function handleEdit(entry: AdSpendEntry) {
-    const rawSpend = window.prompt('Spend (AED)', String(entry.spend_aed))
+    const rawSpend = window.prompt('Spend (INR)', String(entry.spend_aed))
     if (rawSpend == null) return
     const spend = Number(rawSpend)
     if (!Number.isFinite(spend) || spend < 0) {
@@ -258,7 +258,7 @@ export default function MetaAdsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Spend (AED)</label>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Spend (INR)</label>
               <input
                 type="number"
                 min={0}
@@ -295,9 +295,9 @@ export default function MetaAdsPage() {
                 <th className="text-left px-4 py-3 font-medium">Period</th>
                 <th className="text-left px-4 py-3 font-medium">Source</th>
                 <th className="text-left px-4 py-3 font-medium">Campaign</th>
-                <th className="text-right px-4 py-3 font-medium">Spend (AED)</th>
+                <th className="text-right px-4 py-3 font-medium">Spend (INR)</th>
                 <th className="text-right px-4 py-3 font-medium">Leads</th>
-                <th className="text-right px-4 py-3 font-medium">CPL (AED)</th>
+                <th className="text-right px-4 py-3 font-medium">CPL (INR)</th>
                 <th className="text-right px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>

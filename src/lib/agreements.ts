@@ -209,8 +209,8 @@ export function generateAgreementPDF(agr: Agreement): jsPDF {
   doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(100, 116, 139)
   doc.text('Total Price', M + 2, y); doc.text('Booking Amount Paid', col2, y)
   doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(15, 23, 42)
-  doc.text(`AED ${agr.total_price.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`, M + 2, y + 6)
-  doc.text(`AED ${agr.booking_amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`, col2, y + 6)
+  doc.text(`INR ${agr.total_price.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`, M + 2, y + 6)
+  doc.text(`INR ${agr.booking_amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`, col2, y + 6)
   y += 12
 
   // ── Payment Schedule ──
@@ -224,7 +224,7 @@ export function generateAgreementPDF(agr: Agreement): jsPDF {
     doc.setFontSize(8)
     doc.text('#', M + 4, y + 5)
     doc.text('Due Date', M + 20, y + 5)
-    doc.text('Amount (AED)', W - M - 4, y + 5, { align: 'right' })
+    doc.text('Amount (INR)', W - M - 4, y + 5, { align: 'right' })
     y += 7
 
     const schedule = Array.isArray(agr.payment_schedule)

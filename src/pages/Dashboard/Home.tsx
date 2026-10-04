@@ -26,6 +26,7 @@ export default function DashboardHome() {
   const [recentCalls, setRecentCalls] = useState<Call[]>([])
   const [loading, setLoading] = useState(true)
   const [testCallLoading, setTestCallLoading] = useState(false)
+  const [bolnaLoading, setBolnaLoading] = useState(false)
   const [vapiActive, setVapiActive] = useState(false)
   const [vapiLoading, setVapiLoading] = useState(false)
   const vapiRef = useRef<{ stop: () => void } | null>(null)
@@ -77,6 +78,40 @@ export default function DashboardHome() {
       console.error('Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleBolnaCall() {
+    const phoneNumber = prompt('Enter guest phone number (with country code, e.g. +919876543210):')
+    if (!phoneNumber) return
+    if (!/^\+\d{10,15}$/.test(phoneNumber)) {
+      alert('Invalid phone number format. Use: +919876543210')
+      return
+    }
+    setBolnaLoading(true)
+    try {
+      const res = await fetch('https://api.bolna.ai/call', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer bn-852296d5eb0c4039909745858fb1f83a`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agent_id: '9ac6fce1-f80e-4fee-9406-741fd32ee555',
+          recipient_phone_number: phoneNumber,
+        }),
+      })
+      if (res.ok) {
+        alert('Bolna AI call initiated! Guest will receive a call shortly.')
+      } else {
+        const err = await res.text()
+        alert(`Call failed: ${err}`)
+      }
+    } catch (e) {
+      console.error('Bolna call error:', e)
+      alert('Could not initiate call. Check console.')
+    } finally {
+      setBolnaLoading(false)
     }
   }
 
@@ -164,35 +199,59 @@ export default function DashboardHome() {
         <h1 className="text-2xl font-bold text-slate-900">
           Welcome back, {agent?.full_name?.split(' ')[0] || 'Agent'}! 👋
         </h1>
-        <p className="text-slate-600 mt-1">Here's what's happening with your leads today.</p>
+        <p className="text-slate-600 mt-1">Here's what's happening with your suite bookings today.</p>
       </div>
 
-      {/* VAPI Browser Talk Button */}
-      <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold mb-1">AI Voice Agent — Live Demo</h3>
-            <p className="text-violet-100 text-sm">
-              {vapiActive ? 'Listening… speak now' : 'Click to talk to your AI agent directly in the browser — no phone needed'}
-            </p>
+      {/* AI Voice Agents — two cards side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* VAPI — Global / English */}
+        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold mb-1">VAPI — Global Agent</h3>
+              <p className="text-violet-100 text-xs">
+                {vapiActive ? 'Listening… speak now' : 'Browser call — English / International leads'}
+              </p>
+            </div>
+            <button
+              onClick={handleVapiTalk}
+              disabled={vapiLoading}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all ${
+                vapiActive ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-white hover:bg-violet-50'
+              } disabled:opacity-50`}
+            >
+              {vapiLoading ? (
+                <div className="w-5 h-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+              ) : vapiActive ? (
+                <MicOff className="w-6 h-6 text-white" />
+              ) : (
+                <Mic className="w-6 h-6 text-violet-600" />
+              )}
+            </button>
           </div>
-          <button
-            onClick={handleVapiTalk}
-            disabled={vapiLoading}
-            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all ${
-              vapiActive
-                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                : 'bg-white hover:bg-violet-50'
-            } disabled:opacity-50`}
-          >
-            {vapiLoading ? (
-              <div className="w-6 h-6 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
-            ) : vapiActive ? (
-              <MicOff className="w-7 h-7 text-white" />
-            ) : (
-              <Mic className="w-7 h-7 text-violet-600" />
-            )}
-          </button>
+        </div>
+
+        {/* Bolna — Telugu / India */}
+        <div className="bg-gradient-to-r from-amber-600 to-yellow-500 rounded-xl p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold mb-1">Bolna — Telugu Agent</h3>
+              <p className="text-amber-100 text-xs">
+                Outbound call — Telugu &amp; English, India guests
+              </p>
+            </div>
+            <button
+              onClick={handleBolnaCall}
+              disabled={bolnaLoading}
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg bg-white hover:bg-amber-50 disabled:opacity-50 transition-all"
+            >
+              {bolnaLoading ? (
+                <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Mic className="w-6 h-6 text-amber-600" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

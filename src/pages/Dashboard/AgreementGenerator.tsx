@@ -29,7 +29,7 @@ const STATUS_ICON: Record<AgreementStatus, React.ElementType> = {
 }
 
 function fmt(n: number) {
-  return 'AED ' + n.toLocaleString('en-AE', { minimumFractionDigits: 2 })
+  return 'INR ' + n.toLocaleString('en-AE', { minimumFractionDigits: 2 })
 }
 
 type Step = 'form' | 'preview'
@@ -430,12 +430,12 @@ export default function AgreementGeneratorPage() {
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Financials</label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Total Price (AED) *</label>
+                      <label className="block text-xs text-slate-500 mb-1">Total Price (INR) *</label>
                       <input required type="number" value={form.total_price} onChange={(e) => updateField('total_price', e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="1000000" />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Booking Amount (AED)</label>
+                      <label className="block text-xs text-slate-500 mb-1">Booking Amount (INR)</label>
                       <input type="number" value={form.booking_amount} onChange={(e) => updateField('booking_amount', e.target.value)}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder="100000" />
                     </div>

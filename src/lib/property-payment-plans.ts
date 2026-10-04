@@ -79,14 +79,14 @@ export function fetchPaymentPlanTeasers(propertyIds: string[]) {
   )
 }
 
-/** Format AED for payment plan table (full or compact K/M). */
+/** Format INR for payment plan table (full or compact K/M). */
 export function formatPlanAmount(aed: number, compact = false): string {
-  if (!Number.isFinite(aed)) return 'AED —'
-  if (!compact) return `AED ${Math.round(aed).toLocaleString()}`
+  if (!Number.isFinite(aed)) return 'INR —'
+  if (!compact) return `INR ${Math.round(aed).toLocaleString()}`
   const abs = Math.abs(aed)
-  if (abs >= 1_000_000) return `AED ${(aed / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`
-  if (abs >= 1_000) return `AED ${Math.round(aed / 1_000)}K`
-  return `AED ${Math.round(aed).toLocaleString()}`
+  if (abs >= 1_000_000) return `INR ${(aed / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`
+  if (abs >= 1_000) return `INR ${Math.round(aed / 1_000)}K`
+  return `INR ${Math.round(aed).toLocaleString()}`
 }
 
 export const BAR_COLORS = ['#7C3AED', '#06B6D4', '#10B981', '#F59E0B'] as const
