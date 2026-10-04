@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import {
   AlertCircle, Building2, CheckCircle2, Clock,
   DollarSign, Loader2, RefreshCw, TrendingUp, Users,
+  Star, Phone, MessageCircle, Activity, Send,
 } from 'lucide-react'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -18,7 +19,7 @@ import { whatsappLink } from '../../lib/payment-tracker'
 const PIE_COLORS = ['#3b82f6', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#64748b']
 
 function fmt(n: number) {
-  return 'INR ' + n.toLocaleString('en-AE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 function KpiCard({
@@ -52,6 +53,10 @@ export default function OwnerDashboard() {
   const [monthlyRevenue, setMonthlyRevenue] = useState<{ month: string; revenue: number; target: number }[]>([])
   const [hotLeads, setHotLeads] = useState<any[]>([])
   const [overduePayments, setOverduePayments] = useState<any[]>([])
+  const [membershipStats, setMembershipStats] = useState({ active: 0, silver: 0, gold: 0, platinum: 0, revenue: 0 })
+  const [activityFeed, setActivityFeed] = useState<{ id: string; text: string; time: string; type: string }[]>([])
+  const [todaySummary, setTodaySummary] = useState({ leads: 0, payments: 0, bookings: 0, followups: 0 })
+  const [sendingReport, setSendingReport] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -74,6 +79,39 @@ export default function OwnerDashboard() {
       setMonthlyRevenue(mr)
       setHotLeads(hl)
       setOverduePayments(op)
+
+      // Membership stats
+      const { data: members } = await supabase.from('memberships').select('membership_tier, amount_paid, status')
+      if (members) {
+        const active = members.filter(m => m.status === 'Active')
+        setMembershipStats({
+          active: active.length,
+          silver: active.filter(m => m.membership_tier === 'Silver').length,
+          gold: active.filter(m => m.membership_tier === 'Gold').length,
+          platinum: active.filter(m => m.membership_tier === 'Platinum').length,
+          revenue: members.reduce((s, m) => s + (m.amount_paid || 0), 0),
+        })
+      }
+
+      // Today's summary
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const [{ count: leadsToday }, { count: paymentsToday }, { count: bookingsToday }] = await Promise.all([
+        supabase.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', todayStr),
+        supabase.from('payments').select('id', { count: 'exact', head: true }).gte('paid_date', todayStr).eq('status', 'Paid'),
+        supabase.from('suites').select('id', { count: 'exact', head: true }).eq('status', 'Booked').gte('updated_at', todayStr),
+      ])
+      setTodaySummary({ leads: leadsToday || 0, payments: paymentsToday || 0, bookings: bookingsToday || 0, followups: hl.length })
+
+      // Activity feed — last 10 events across leads + payments
+      const [{ data: recentLeads }, { data: recentPmts }] = await Promise.all([
+        supabase.from('leads').select('id, name, source, created_at').order('created_at', { ascending: false }).limit(5),
+        supabase.from('payments').select('id, customer_name, installment_amount, paid_date, created_at').order('created_at', { ascending: false }).limit(5),
+      ])
+      const feed = [
+        ...(recentLeads || []).map(l => ({ id: l.id, text: `New lead — ${l.name} via ${l.source || 'Unknown'}`, time: l.created_at, type: 'lead' })),
+        ...(recentPmts || []).map(p => ({ id: p.id, text: `Payment received — ${p.customer_name} ₹${Number(p.installment_amount).toLocaleString()}`, time: p.created_at, type: 'payment' })),
+      ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 10)
+      setActivityFeed(feed)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load dashboard')
     } finally {
@@ -126,6 +164,28 @@ export default function OwnerDashboard() {
             className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
           >
             <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            disabled={sendingReport}
+            onClick={() => {
+              setSendingReport(true)
+              const available = suiteStats.counts['Available'] ?? 0
+              const msg = `📊 *VSR Daily Report — ${new Date().toLocaleDateString('en-IN')}*\n\n` +
+                `*Leads Today:* ${todaySummary.leads}\n` +
+                `*Payments Today:* ${todaySummary.payments}\n` +
+                `*Suites Available:* ${available} of ${suiteStats.total}\n` +
+                `*Active Members:* ${membershipStats.active} (S:${membershipStats.silver} G:${membershipStats.gold} P:${membershipStats.platinum})\n` +
+                `*Collected (period):* ₹${kpis.paymentsCollected.toLocaleString()}\n` +
+                `*Outstanding:* ₹${kpis.outstanding.toLocaleString()}\n` +
+                `*Overdue payments:* ${overduePayments.length}\n\n` +
+                `_Sent from VSR CRM_`
+              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+              setTimeout(() => setSendingReport(false), 1500)
+            }}
+            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+            {sendingReport ? 'Opening…' : 'WA Report'}
           </button>
         </div>
       </div>
@@ -245,6 +305,60 @@ export default function OwnerDashboard() {
             </div>
           </div>
 
+          {/* Row 3.5 — Membership Stats + Today Summary */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Membership KPIs */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500" /> Club Memberships
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-slate-900">{membershipStats.active}</p>
+                  <p className="text-xs text-slate-500">Active</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-700">₹{membershipStats.revenue.toLocaleString()}</p>
+                  <p className="text-xs text-green-600">Revenue</p>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                {[
+                  { label: 'Silver', count: membershipStats.silver, cls: 'bg-slate-100 text-slate-700' },
+                  { label: 'Gold', count: membershipStats.gold, cls: 'bg-yellow-100 text-yellow-800' },
+                  { label: 'Platinum', count: membershipStats.platinum, cls: 'bg-purple-100 text-purple-800' },
+                ].map(t => (
+                  <div key={t.label} className={`flex-1 rounded-lg p-2 text-center text-xs font-semibold ${t.cls}`}>
+                    <p className="text-lg font-bold">{t.count}</p>{t.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Today's Summary */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-500" /> Today's Summary
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Leads Today', value: todaySummary.leads, icon: Users, cls: 'text-blue-600 bg-blue-50' },
+                  { label: 'Payments Today', value: todaySummary.payments, icon: CheckCircle2, cls: 'text-green-600 bg-green-50' },
+                  { label: 'New Bookings', value: todaySummary.bookings, icon: Building2, cls: 'text-purple-600 bg-purple-50' },
+                  { label: 'Hot Leads', value: todaySummary.followups, icon: Phone, cls: 'text-red-600 bg-red-50' },
+                ].map(({ label, value, icon: Icon, cls }) => (
+                  <div key={label} className={`rounded-lg p-3 flex items-center gap-3 ${cls.split(' ')[1]}`}>
+                    <Icon className={`w-5 h-5 ${cls.split(' ')[0]}`} />
+                    <div>
+                      <p className={`text-xl font-bold ${cls.split(' ')[0]}`}>{value}</p>
+                      <p className="text-xs text-slate-500">{label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Row 4 — Tables */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Hot Leads */}
@@ -329,6 +443,29 @@ export default function OwnerDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+          {/* Row 5 — Activity Feed */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-slate-500" /> Recent Activity
+              </h2>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {activityFeed.length === 0 ? (
+                <p className="px-5 py-8 text-sm text-slate-400 text-center">No recent activity</p>
+              ) : activityFeed.map(ev => (
+                <div key={ev.id + ev.time} className="flex items-center gap-3 px-5 py-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${ev.type === 'payment' ? 'bg-green-100' : 'bg-blue-100'}`}>
+                    {ev.type === 'payment' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Users className="w-4 h-4 text-blue-600" />}
+                  </div>
+                  <p className="text-sm text-slate-700 flex-1">{ev.text}</p>
+                  <span className="text-xs text-slate-400 flex-shrink-0">
+                    {new Date(ev.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </>
