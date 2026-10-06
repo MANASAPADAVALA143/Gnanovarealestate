@@ -9,6 +9,7 @@
     "next:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/restart-next.ps1",
     "next:clean": "powershell -NoProfile -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next }\"",
     "next:build": "next build",
+    "dashboard:build": "next build",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
