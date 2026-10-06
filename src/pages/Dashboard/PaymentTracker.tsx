@@ -75,16 +75,23 @@ export default function PaymentTrackerPage() {
     const { data, error } = await supabase
       .from('payments')
       .select('*')
-      .order('due_date', { ascending: true })
+      .order('suite_number', { ascending: true })
+      .order('installment_number', { ascending: true })
     if (!error && data) setPayments(data as Payment[])
     setLoading(false)
   }
 
-  const filtered = payments.filter((p) => {
-    const matchStatus = filterStatus === 'All' || p.status === filterStatus
-    const matchSuite = !filterSuite || (p.suite_number || '').toLowerCase().includes(filterSuite.toLowerCase())
-    return matchStatus && matchSuite
-  })
+  const filtered = payments
+    .filter((p) => {
+      const matchStatus = filterStatus === 'All' || p.status === filterStatus
+      const matchSuite = !filterSuite || (p.suite_number || '').toLowerCase().includes(filterSuite.toLowerCase())
+      return matchStatus && matchSuite
+    })
+    .sort((a, b) => {
+      const suiteCmp = (a.suite_number || '').localeCompare(b.suite_number || '', undefined, { numeric: true })
+      if (suiteCmp !== 0) return suiteCmp
+      return Number(a.installment_number) - Number(b.installment_number)
+    })
 
   const totalCollected = payments.filter((p) => p.status === 'Paid').reduce((s, p) => s + p.installment_amount, 0)
   const totalOutstanding = payments.filter((p) => p.status !== 'Paid').reduce((s, p) => s + p.installment_amount, 0)

@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
       .select(
         'id, customer_name, customer_phone, suite_id, suite_number, total_price, booking_amount, installment_number, installment_amount, due_date, paid_date, payment_method, utr_number, status, receipt_sent, created_at, suites ( suite_number )'
       )
-      .order('due_date', { ascending: true })
+      .order('suite_number', { ascending: true })
+      .order('installment_number', { ascending: true })
       .limit(limit)
 
     if (status) query = query.eq('status', status)
