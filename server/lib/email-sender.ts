@@ -5,8 +5,10 @@ export type FollowUpLead = {
   name: string | null
   email: string | null
   phone?: string | null
+  lead_phone?: string | null
   lead_source?: string | null
   score_label?: string | null
+  projectName?: string | null
 }
 
 export type FollowUpCallSummary = {

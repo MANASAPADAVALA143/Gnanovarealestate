@@ -4,6 +4,8 @@ import {
   type FollowUpCallSummary,
   type FollowUpLead,
 } from './email-sender'
+import { sendWhatsAppOutbound } from './whatsapp-inbox'
+import { mapVapiToCallOutcome } from '../../src/lib/call-outcome'
 
 type EmailLogStatus =
   | 'sent'
@@ -90,6 +92,26 @@ async function alreadySentToday(
   return Boolean(logs && logs.length > 0)
 }
 
+async function sendPostCallWhatsApp(input: {
+  lead: FollowUpLead
+  callOutcome?: string
+}): Promise<void> {
+  const phone = input.lead.phone || input.lead.lead_phone
+  if (!phone) return
+
+  const isMissed = ['not_reached', 'voicemail', 'no-answer'].includes(input.callOutcome || '')
+  const waMessage = isMissed
+    ? `Hi ${input.lead.name || 'there'}, this is the ${input.lead.projectName || 'Gnanova'} team in Dubai 👋 We tried calling you but couldn't reach you. Reply here anytime and we'll call you back, or let us know what you're looking for!`
+    : `Hi ${input.lead.name || 'there'}, thank you for speaking with us about ${input.lead.projectName || 'Dubai properties'} 🏙️ Our broker will follow up with you shortly. Feel free to reply here with any questions!`
+
+  try {
+    await sendWhatsAppOutbound(phone, waMessage)
+    console.log('[post-call-followup] WhatsApp sent to', phone)
+  } catch (err) {
+    console.error('[post-call-followup] WhatsApp failed:', err)
+  }
+}
+
 /**
  * Core send + logging. Safe to call fire-and-forget.
  */
@@ -99,6 +121,7 @@ export async function processPostCallFollowUp(
     lead: FollowUpLead
     callSummary: FollowUpCallSummary
     agentId?: string | null
+    callOutcome?: string
   }
 ): Promise<void> {
   const leadId = input.lead.id || null
@@ -124,6 +147,7 @@ export async function processPostCallFollowUp(
         subject: null,
         status: 'skipped_no_email',
       })
+      await sendPostCallWhatsApp({ lead: input.lead, callOutcome: input.callOutcome })
       return
     }
 
@@ -142,6 +166,9 @@ export async function processPostCallFollowUp(
       { ...input.lead, email },
       input.callSummary
     )
+
+    // WhatsApp follow-up (missed call or answered)
+    await sendPostCallWhatsApp({ lead: input.lead, callOutcome: input.callOutcome })
 
     if (result.success) {
       await writeEmailLog(supabase, {
@@ -286,6 +313,20 @@ export async function schedulePostCallFollowUpFromVapiPayload(
     handlerResult?.leadStatus ||
     null
 
+  const endedReason = String(
+    call?.endedReason ?? call?.endReason ?? payload.endedReason ?? ''
+  )
+  const durationSec = typeof call?.duration === 'number' ? call.duration : 0
+  const hasTranscript = Boolean(
+    (typeof call?.transcript === 'string' && call.transcript.trim()) ||
+      (typeof (payload.message as { transcript?: string } | undefined)?.transcript === 'string' &&
+        (payload.message as { transcript: string }).transcript.trim())
+  )
+  const callOutcome =
+    mapVapiToCallOutcome(endedReason, durationSec, hasTranscript) ||
+    handlerResult?.leadStatus ||
+    undefined
+
   await processPostCallFollowUp(supabase, {
     agentId: agentId || null,
     lead: {
@@ -298,9 +339,10 @@ export async function schedulePostCallFollowUpFromVapiPayload(
     },
     callSummary: {
       duration_seconds: typeof call?.duration === 'number' ? call.duration : null,
-      outcome: handlerResult?.leadStatus || null,
+      outcome: callOutcome || handlerResult?.leadStatus || null,
       transcript_summary: null,
     },
+    callOutcome,
   })
 }
 
@@ -348,5 +390,6 @@ export async function schedulePostCallFollowUpForLead(
       score_label: lead.score_label,
     },
     callSummary,
+    callOutcome: callSummary.outcome || undefined,
   })
 }

@@ -4,11 +4,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import mammoth from 'mammoth'
-import { createRequire } from 'module'
-
-// pdf-parse is CommonJS, need to use require
-const require = createRequire(import.meta.url)
-const pdfParse = require('pdf-parse')
+import { PDFParse } from 'pdf-parse'
 
 dotenv.config()
 
@@ -122,16 +118,26 @@ export async function parseDocument(req, res) {
       console.log('   ✅ Image text extracted successfully!')
 
     } else if (fileType === 'application/pdf') {
-      // Handle PDF files with pdf-parse
+      // pdf-parse v2: class API (PDFParse), not a default function
       console.log('📃 Detected PDF file - Using pdf-parse...')
+      let parser = null
       try {
         console.log('   → Parsing PDF content...')
-        const pdfData = await pdfParse(fileBuffer)
-        extractedText = pdfData.text
+        parser = new PDFParse({ data: fileBuffer })
+        const pdfData = await parser.getText()
+        extractedText = pdfData.text || ''
         console.log('   ✅ PDF text extracted:', extractedText.length, 'characters')
       } catch (pdfError) {
         console.error('❌ PDF parsing error:', pdfError.message)
         throw new Error(`Failed to parse PDF: ${pdfError.message}`)
+      } finally {
+        if (parser) {
+          try {
+            await parser.destroy()
+          } catch {
+            // ignore cleanup errors
+          }
+        }
       }
       
     } else if (fileType.includes('word')) {

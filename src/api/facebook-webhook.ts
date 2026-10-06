@@ -10,8 +10,8 @@
 
 import { supabase } from '../lib/supabase'
 import { syncToGoHighLevel } from '../lib/gohighlevel'
-import { initiatePublicCall } from './initiate-public-call'
 import { onLeadCreated } from '../../lib/crm-hooks'
+import { enqueueSpeedToLeadCall } from '../../server/lib/speed-to-lead'
 
 export interface FacebookLeadData {
   id: string
@@ -171,19 +171,21 @@ export async function handleFacebookLeadWebhook(payload: any): Promise<{
       })
       .catch(err => console.error('⚠️ GHL sync failed:', err))
 
-    // 3. Trigger VAPI call immediately
+    // 3. Speed-to-lead: Priya auto-dial (same path as Zillow/Realtor)
     try {
-      console.log('📞 Initiating VAPI call to Facebook lead...')
-      
-      await initiatePublicCall({
+      console.log('📞 Enqueuing Priya speed-to-lead call for Facebook lead...')
+      const dial = await enqueueSpeedToLeadCall({
+        leadId: lead.id,
         name: parsedData.name,
-        email: parsedData.email || '',
         phone: parsedData.phone,
-        location: parsedData.location || '',
-        timeline: parsedData.timeline || '1-3 months',
+        source: 'facebook',
+        location: parsedData.location || null,
       })
-
-      console.log('✅ VAPI call initiated for Facebook lead')
+      if (dial.dialed) {
+        console.log('✅ Priya call initiated for Facebook lead, log:', dial.speedLogId)
+      } else {
+        console.warn('⚠️ Facebook lead saved but dial skipped:', dial.reason)
+      }
     } catch (callError: any) {
       console.error('❌ Error initiating VAPI call:', callError.message)
       // Don't throw - we still want to return success since lead was saved

@@ -43,7 +43,6 @@ export async function runNudgeScheduler(): Promise<void> {
     .from('leads')
     .select('id, name, phone, location, agent_id, nudge_count, status')
     .lte('created_at', cutoff)
-    .eq('nudge_count', 0)
     .not('status', 'in', '(closed,lost,disqualified,qualified)')
     .not('phone', 'is', null)
     .neq('phone', '')

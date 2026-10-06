@@ -59,30 +59,38 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [agent, setAgent] = useState<Agent | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [dashboardPreview, setDashboardPreview] = useState(false)
+  const previewBoot = isDashboardPreviewEnabled()
+  const [user, setUser] = useState<User | null>(previewBoot ? previewUser() : null)
+  const [agent, setAgent] = useState<Agent | null>(previewBoot ? previewAgent() : null)
+  const [loading, setLoading] = useState(!previewBoot)
+  const [dashboardPreview, setDashboardPreview] = useState(previewBoot)
 
   useEffect(() => {
-    function applySession(session: Session | null) {
-      if (session?.user) {
+    let cancelled = false
+
+    function applyPreviewSession() {
+      if (!isDashboardPreviewEnabled()) {
         setDashboardPreview(false)
-        setUser(session.user)
-        fetchAgent(session.user.id)
-        return
-      }
-      if (isDashboardPreviewEnabled()) {
-        setDashboardPreview(true)
-        setUser(previewUser())
-        setAgent(previewAgent())
+        setUser(null)
+        setAgent(null)
         setLoading(false)
         return
       }
-      setDashboardPreview(false)
-      setUser(null)
-      setAgent(null)
+      setDashboardPreview(true)
+      setUser(previewUser())
+      setAgent(previewAgent())
       setLoading(false)
+    }
+
+    function applySession(session: Session | null) {
+      if (cancelled) return
+      if (session?.user) {
+        setDashboardPreview(false)
+        setUser(session.user)
+        void fetchAgent(session.user.id)
+        return
+      }
+      applyPreviewSession()
     }
 
     supabase.auth
@@ -96,23 +104,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         applySession(null)
       })
 
+    // Never leave the UI stuck on "Loading…" if Supabase hangs (non-preview builds).
+    const authTimeout = window.setTimeout(() => {
+      setLoading((prev) => {
+        if (!prev) return prev
+        console.warn('[Gnanova] auth init timed out — clearing loading state')
+        applySession(null)
+        return false
+      })
+    }, 5000)
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       applySession(session)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      window.clearTimeout(authTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchAgent(userId: string) {
     try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
+      const timeoutMs = 6000
+      const result = await Promise.race([
+        supabase.from('agents').select('*').eq('id', userId).single(),
+        new Promise<null>((resolve) => window.setTimeout(() => resolve(null), timeoutMs)),
+      ])
+      if (!result) throw new Error('Agent fetch timed out')
+      const { data, error } = result
       if (error) throw error
       setAgent({
         ...(data as Agent),

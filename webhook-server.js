@@ -1144,7 +1144,6 @@ app.post('/webhook/whatsapp/inbound', async (req, res) => {
             const text = msg.text?.body || msg.button?.text || `[${msg.type}]`
             console.log(`[whatsapp-inbound] Meta message from +${from}: ${text}`)
             try {
-              // Check if this is a bot qualification reply first
               const handledByBot = await handleBotReply(`+${from}`, text)
               if (!handledByBot) {
                 await processInboundWhatsApp({

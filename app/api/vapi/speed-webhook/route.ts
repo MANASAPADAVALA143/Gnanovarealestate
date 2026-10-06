@@ -327,16 +327,39 @@ Respond ONLY with valid JSON (no markdown), for example:
     }
   }
 
-  // Post-call follow-up email (async — do not block VAPI response)
+  // Post-call follow-up email + WhatsApp (async — do not block VAPI response)
+  const followUpOutcome =
+    durationSeconds < 4 || transcript.length < 20 ? 'not_reached' : scoreLabel
   void import('../../../../server/lib/post-call-followup')
     .then(({ schedulePostCallFollowUpForLead }) =>
       schedulePostCallFollowUpForLead(supabase, leadId, {
         duration_seconds: durationSeconds,
-        outcome: scoreLabel,
+        outcome: followUpOutcome,
         transcript_summary: null,
       })
     )
     .catch((err) => console.error('[speed-webhook] post-call-followup', err))
+
+  if (String(scoreLabel).trim().toLowerCase() === 'hot') {
+    void fetch('https://manasapadavala.app.n8n.cloud/webhook/lead-scored', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lead_id: leadId,
+        lead_name: lr?.name || 'Unknown',
+        phone: lr?.phone || null,
+        email: null,
+        project_name: lr?.property_address || 'Dubai Property',
+        lead_score: score,
+        lead_category: 'Hot',
+        budget_range_aed: lr?.budget_mentioned || 'Undecided',
+        payment_preference: 'Undecided',
+        call_summary: transcript.slice(0, 500),
+      }),
+    })
+      .then(() => console.log('[speed-webhook] Phase 3 broker notification fired'))
+      .catch((err) => console.error('[speed-webhook] Phase 3 notify failed:', err))
+  }
 
   return NextResponse.json({
     scored: true,

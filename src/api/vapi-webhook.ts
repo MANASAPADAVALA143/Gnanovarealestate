@@ -144,6 +144,35 @@ export async function handleVapiWebhook(payload: any) {
 
     console.log('Call saved successfully:', callRecord.id)
 
+    // Notify broker instantly on hot lead → fires n8n Phase 3
+    if (status === 'hot') {
+      try {
+        const customerNumber =
+          call.customer && typeof call.customer === 'object'
+            ? (call.customer as { number?: string }).number
+            : undefined
+        await fetch('https://manasapadavala.app.n8n.cloud/webhook/lead-scored', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id: leadData.leadId || call.metadata?.leadId,
+            lead_name: leadData.name || 'Unknown',
+            phone: call.phoneNumber || customerNumber,
+            email: leadData.email || null,
+            project_name: leadData.projectName || 'Dubai Property',
+            lead_score: score,
+            lead_category: 'Hot',
+            budget_range_aed: `AED ${leadData.budgetMin || 0} - ${leadData.budgetMax || 0}`,
+            payment_preference: leadData.paymentPreference || 'Undecided',
+            call_summary: leadData.summary || '',
+          }),
+        })
+        console.log('[vapi-webhook] Phase 3 broker notification fired')
+      } catch (err) {
+        console.error('[vapi-webhook] Phase 3 notify failed:', err)
+      }
+    }
+
     // Log activity
     if (supabase) {
       await supabase.from('activity_log').insert({

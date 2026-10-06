@@ -8,10 +8,17 @@ import { getSupabaseBrowserClient } from '../../lib/supabase-browser'
 
 const nav = [
   { href: '/dashboard', label: 'Overview' },
+  { href: '/dashboard/leads', label: 'Leads' },
+  { href: '/dashboard/pipeline', label: 'Pipeline' },
+  { href: '/dashboard/tasks', label: 'Tasks' },
+  { href: '/dashboard/inbox', label: 'WhatsApp' },
+  { href: '/dashboard/viewings', label: 'Viewings' },
+  { href: '/dashboard/deals', label: 'Deals' },
+  { href: '/dashboard/commissions', label: 'Commission' },
   { href: '/dashboard/properties', label: 'Properties' },
   { href: '/dashboard/campaigns', label: 'Campaigns' },
-  { href: '/dashboard/speed-to-lead', label: 'Speed-to-Lead ⚡' },
-  { href: '/dashboard/leads/scored', label: 'Hot Leads' },
+  { href: '/dashboard/speed-to-lead', label: 'Speed-to-Lead' },
+  { href: '/dashboard/leads/scored', label: 'Hot Leads ⚡' },
 ]
 
 export default function DashboardGroupLayout({ children }: { children: ReactNode }) {
@@ -91,7 +98,7 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
           </button>
         </div>
       </div>
-      <div className="p-6 max-w-6xl mx-auto">{children}</div>
+      <div className="p-6 max-w-[1400px] mx-auto">{children}</div>
     </div>
   )
 }
