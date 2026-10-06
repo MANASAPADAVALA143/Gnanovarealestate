@@ -93,6 +93,30 @@ export default function Lead360Page() {
   const [note, setNote] = useState('')
   const [showNote, setShowNote] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showViewingModal, setShowViewingModal] = useState(false)
+  const [viewingForm, setViewingForm] = useState({ property_id: '', scheduled_at: '', notes: '' })
+  const [properties, setProperties] = useState<
+    { id: string; title: string | null; address: string | null; city: string | null }[]
+  >([])
+  const [viewingError, setViewingError] = useState<string | null>(null)
+  const [viewingSaving, setViewingSaving] = useState(false)
+  const [matchedProperties, setMatchedProperties] = useState<
+    Array<{
+      id: string
+      title: string | null
+      address: string | null
+      city: string | null
+      price: number | null
+      bedrooms: number | null
+      property_type: string | null
+      similarity?: number
+    }>
+  >([])
+  const [propertiesLoading, setPropertiesLoading] = useState(false)
+  const [propertiesLoaded, setPropertiesLoaded] = useState(false)
+  const [sendingWA, setSendingWA] = useState<string | null>(null)
+
+  type MatchedProperty = (typeof matchedProperties)[number]
 
   const load = useCallback(async () => {
     if (!id) return
@@ -121,9 +145,20 @@ export default function Lead360Page() {
     }
   }, [id])
 
+  const loadProperties = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/properties?limit=100')
+      const j = await res.json().catch(() => ({}))
+      setProperties((j.properties as typeof properties) || [])
+    } catch {
+      /* silent */
+    }
+  }, [])
+
   useEffect(() => {
     void load()
-  }, [load])
+    void loadProperties()
+  }, [load, loadProperties])
 
   async function changeStage(stage: string) {
     if (!id) return
@@ -178,6 +213,98 @@ export default function Lead360Page() {
     setNote('')
     setShowNote(false)
     void load()
+  }
+
+  async function scheduleViewing() {
+    if (!id || !viewingForm.property_id || !viewingForm.scheduled_at) return
+    setViewingSaving(true)
+    setViewingError(null)
+    try {
+      const res = await apiFetch('/api/viewings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: id,
+          property_id: viewingForm.property_id,
+          scheduled_at: viewingForm.scheduled_at,
+          client_name: lead?.name || null,
+          client_phone: lead?.phone || null,
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(j.error || 'Failed to schedule viewing')
+      setShowViewingModal(false)
+      setViewingForm({ property_id: '', scheduled_at: '', notes: '' })
+      setTab('viewings')
+      void load()
+    } catch (e: unknown) {
+      setViewingError(e instanceof Error ? e.message : 'Failed to schedule')
+    } finally {
+      setViewingSaving(false)
+    }
+  }
+
+  async function loadMatchedProperties(force = false) {
+    if (!lead || (propertiesLoaded && !force)) return
+    setPropertiesLoading(true)
+    try {
+      const res = await apiFetch('/api/properties/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: id,
+          preferences: {
+            location: lead.location || undefined,
+            budget_max: undefined,
+          },
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      const rows = (j.properties as Array<MatchedProperty & { similarity_score?: number }>) || []
+      if (res.ok && rows.length > 0) {
+        setMatchedProperties(
+          rows.map((p) => ({
+            ...p,
+            similarity: p.similarity ?? p.similarity_score,
+          }))
+        )
+      } else {
+        const listRes = await apiFetch('/api/properties?limit=20')
+        const listJ = await listRes.json().catch(() => ({}))
+        setMatchedProperties((listJ.properties as MatchedProperty[]) || [])
+      }
+    } catch {
+      try {
+        const listRes = await apiFetch('/api/properties?limit=20')
+        const listJ = await listRes.json().catch(() => ({}))
+        setMatchedProperties((listJ.properties as MatchedProperty[]) || [])
+      } catch {
+        setMatchedProperties([])
+      }
+    } finally {
+      setPropertiesLoading(false)
+      setPropertiesLoaded(true)
+    }
+  }
+
+  async function sendPropertyOnWhatsApp(property: MatchedProperty) {
+    if (!lead) return
+    setSendingWA(property.id)
+    setError(null)
+    try {
+      const msg = `Hi ${lead.name}, here is a property that matches your requirements:\n\n🏠 ${property.title || property.address || 'Property'}\n📍 ${property.city || property.address || ''}\n${property.price ? `💰 AED ${property.price.toLocaleString()}` : ''}\n${property.bedrooms ? `🛏 ${property.bedrooms} bed` : ''}\n\nWould you like to schedule a viewing?`
+      const res = await apiFetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: lead.phone, message: msg }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(j.error || 'WhatsApp send failed')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'WhatsApp send failed')
+    } finally {
+      setSendingWA(null)
+    }
   }
 
   if (loading && !lead) {
@@ -261,7 +388,10 @@ export default function Lead360Page() {
           </button>
           <button
             type="button"
-            onClick={() => setTab('viewings')}
+            onClick={() => {
+              setShowViewingModal(true)
+              void loadProperties()
+            }}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
           >
             Schedule Viewing
@@ -379,8 +509,103 @@ export default function Lead360Page() {
       )}
 
       {tab === 'properties' && (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-400">
-          Property matches for this lead will land here in a later phase.
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Lead Requirements</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              <div className="rounded-lg bg-slate-50 p-3">
+                <dt className="text-xs text-slate-400">Budget</dt>
+                <dd className="mt-1 font-medium text-slate-800">{lead.budget_mentioned || '—'}</dd>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <dt className="text-xs text-slate-400">Location</dt>
+                <dd className="mt-1 font-medium text-slate-800">{lead.location || '—'}</dd>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <dt className="text-xs text-slate-400">Interested in</dt>
+                <dd className="mt-1 font-medium text-slate-800">{lead.interested_in || '—'}</dd>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Matched Properties</h3>
+            <button
+              type="button"
+              onClick={() => void loadMatchedProperties(true)}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              {propertiesLoaded ? 'Refresh' : 'Find matches'}
+            </button>
+          </div>
+
+          {!propertiesLoaded && !propertiesLoading && (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center">
+              <p className="text-sm text-slate-400 mb-3">Find AI-matched properties for this lead</p>
+              <button
+                type="button"
+                onClick={() => void loadMatchedProperties(true)}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                Find Matches
+              </button>
+            </div>
+          )}
+
+          {propertiesLoading && (
+            <div className="py-8 text-center text-sm text-slate-400">Finding matches…</div>
+          )}
+
+          {propertiesLoaded && !propertiesLoading && matchedProperties.length === 0 && (
+            <div className="py-8 text-center text-sm text-slate-400">
+              No matched properties found. Try updating the lead&apos;s location or budget.
+            </div>
+          )}
+
+          {matchedProperties.map((p) => (
+            <div
+              key={p.id}
+              className="rounded-xl border border-slate-200 bg-white p-4 flex items-start justify-between gap-4"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900 truncate">{p.title || p.address || 'Property'}</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {p.city}
+                  {p.bedrooms ? ` · ${p.bedrooms} bed` : ''}
+                  {p.property_type ? ` · ${p.property_type}` : ''}
+                </p>
+                {p.price != null && (
+                  <p className="text-sm font-bold text-slate-800 mt-1">AED {p.price.toLocaleString()}</p>
+                )}
+                {p.similarity != null && (
+                  <span className="inline-flex mt-1 items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                    {Math.round(p.similarity * 100)}% match
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={sendingWA === p.id}
+                  onClick={() => void sendPropertyOnWhatsApp(p)}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {sendingWA === p.id ? 'Sending…' : 'Send on WhatsApp'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewingForm((f) => ({ ...f, property_id: p.id }))
+                    setShowViewingModal(true)
+                    void loadProperties()
+                  }}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Schedule Viewing
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -403,6 +628,71 @@ export default function Lead360Page() {
               )
             })
           )}
+        </div>
+      )}
+
+      {showViewingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-900">Schedule Viewing</h2>
+              <button
+                type="button"
+                onClick={() => setShowViewingModal(false)}
+                className="text-slate-400 hover:text-slate-700 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            {viewingError && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                {viewingError}
+              </div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-700 block mb-1">Property *</label>
+                <select
+                  value={viewingForm.property_id}
+                  onChange={(e) => setViewingForm((f) => ({ ...f, property_id: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select a property…</option>
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title || p.address || p.city || p.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 block mb-1">Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  value={viewingForm.scheduled_at}
+                  onChange={(e) => setViewingForm((f) => ({ ...f, scheduled_at: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowViewingModal(false)}
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={viewingSaving || !viewingForm.property_id || !viewingForm.scheduled_at}
+                onClick={() => void scheduleViewing()}
+                className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {viewingSaving ? 'Scheduling…' : 'Schedule Viewing'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

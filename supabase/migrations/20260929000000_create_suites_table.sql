@@ -16,8 +16,11 @@ create table if not exists public.suites (
   updated_at timestamptz not null default now()
 );
 
--- RLS: agents can see all suites in their org
 alter table public.suites enable row level security;
+
+drop policy if exists "Authenticated users can read suites" on public.suites;
+drop policy if exists "Authenticated users can insert suites" on public.suites;
+drop policy if exists "Authenticated users can update suites" on public.suites;
 
 create policy "Authenticated users can read suites"
   on public.suites for select

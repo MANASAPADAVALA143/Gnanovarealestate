@@ -34,18 +34,24 @@ export async function POST(req: NextRequest) {
       scheduled_at?: string
       lead_id?: string
       client_name?: string
+      client_phone?: string
     }
     if (!body.property_id || !body.scheduled_at) {
       return NextResponse.json({ error: 'property_id and scheduled_at required' }, { status: 400 })
+    }
+    const scheduledAt = new Date(body.scheduled_at)
+    if (Number.isNaN(scheduledAt.getTime())) {
+      return NextResponse.json({ error: 'Invalid scheduled_at' }, { status: 400 })
     }
     const supabase = getSupabaseServiceClient()
     const { data, error } = await supabase
       .from('viewings')
       .insert({
         property_id: body.property_id,
-        scheduled_at: body.scheduled_at,
+        scheduled_at: scheduledAt.toISOString(),
         lead_id: body.lead_id || null,
         client_name: body.client_name || null,
+        client_phone: body.client_phone || null,
         agent_id: auth.agentId,
         status: 'scheduled',
       })

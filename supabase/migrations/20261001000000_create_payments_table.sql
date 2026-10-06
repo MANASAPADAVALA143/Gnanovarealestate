@@ -21,6 +21,10 @@ create table if not exists public.payments (
 
 alter table public.payments enable row level security;
 
+drop policy if exists "Authenticated users can read payments" on public.payments;
+drop policy if exists "Authenticated users can insert payments" on public.payments;
+drop policy if exists "Authenticated users can update payments" on public.payments;
+
 create policy "Authenticated users can read payments"
   on public.payments for select using (auth.role() = 'authenticated');
 

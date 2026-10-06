@@ -14,6 +14,8 @@ const nav = [
   { href: '/dashboard/inbox', label: 'WhatsApp' },
   { href: '/dashboard/viewings', label: 'Viewings' },
   { href: '/dashboard/deals', label: 'Deals' },
+  { href: '/dashboard/suites', label: 'Suites' },
+  { href: '/dashboard/payments', label: 'Collections' },
   { href: '/dashboard/commissions', label: 'Commission' },
   { href: '/dashboard/properties', label: 'Properties' },
   { href: '/dashboard/campaigns', label: 'Campaigns' },
