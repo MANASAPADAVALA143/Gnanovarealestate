@@ -1,13 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireVapiSecret } from '../../../../lib/require-vapi-secret'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
-import { toE164 } from '../../../../lib/phone-e164'
-import { inferLeadTypeAndUrgencyFromTranscript } from '../../../../lib/lead-transcript-signals'
+import { requireVapiSecret } from '@/lib/require-vapi-secret'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { toE164 } from '@/lib/phone-e164'
+import { inferLeadTypeAndUrgencyFromTranscript } from '@/lib/lead-transcript-signals'
 import {
   PRIYA_BRANCHING_SYSTEM_PROMPT,
   PRIYA_CAMPAIGN_FIRST_MESSAGE,
-} from '../../../../lib/vapi-priya-branching-prompt'
+} from '@/lib/vapi-priya-branching-prompt'
 import { sendAgentSMSAlert } from '../../../../server/lib/sms-alert'
 
 export const runtime = 'nodejs'

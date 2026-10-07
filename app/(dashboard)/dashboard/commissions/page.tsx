@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '../../../../lib/api-fetch'
-import { formatAed } from '../../../../lib/pipeline'
+import { apiFetch } from '@/lib/api-fetch'
+import { formatAed } from '@/lib/pipeline'
 
 type Invoice = {
   id: string

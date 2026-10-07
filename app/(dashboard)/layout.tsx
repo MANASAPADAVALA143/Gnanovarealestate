@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { getSupabaseBrowserClient } from '../../lib/supabase-browser'
+import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
 
 const nav = [
   { href: '/dashboard', label: 'Overview' },

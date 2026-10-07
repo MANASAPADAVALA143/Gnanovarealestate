@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSupabaseBrowserClient } from '../../lib/supabase-browser'
+import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
 
 export default function LoginPage() {
   const router = useRouter()

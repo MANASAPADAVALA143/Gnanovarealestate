@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
-import { normalizePhone } from '../../../../lib/bulk-import-helpers'
-import { toE164 } from '../../../../lib/phone-e164'
-import { onLeadCreated } from '../../../../lib/crm-hooks'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { normalizePhone } from '@/lib/bulk-import-helpers'
+import { toE164 } from '@/lib/phone-e164'
+import { onLeadCreated } from '@/lib/crm-hooks'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60

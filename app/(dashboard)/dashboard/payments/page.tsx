@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { apiFetch } from '../../../../lib/api-fetch'
-import { formatAed } from '../../../../lib/pipeline'
+import { apiFetch } from '@/lib/api-fetch'
+import { formatAed } from '@/lib/pipeline'
 
 type Payment = {
   id: string

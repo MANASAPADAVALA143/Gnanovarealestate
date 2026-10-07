@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAdminAuth, requireManagerOrOwner } from '../../../../lib/require-admin'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
+import { isAdminAuth, requireManagerOrOwner } from '@/lib/require-admin'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
 
 export const runtime = 'nodejs'
 

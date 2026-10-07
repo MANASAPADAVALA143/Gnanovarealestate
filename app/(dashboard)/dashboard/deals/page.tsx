@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { apiFetch } from '../../../../lib/api-fetch'
-import { DEAL_STAGE_LABELS, DEAL_STAGES, formatAed, type DealStage } from '../../../../lib/pipeline'
+import { apiFetch } from '@/lib/api-fetch'
+import { DEAL_STAGE_LABELS, DEAL_STAGES, formatAed, type DealStage } from '@/lib/pipeline'
 
 type Deal = {
   id: string

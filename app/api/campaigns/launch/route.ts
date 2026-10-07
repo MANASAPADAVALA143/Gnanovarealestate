@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
 import {
   applyAgentClaimPoolFilter,
   fetchMatchingLeadIds,
   type CampaignFilters,
   type CampaignScoreFilter,
-} from '../../../../lib/campaign-query'
-import { toE164 } from '../../../../lib/phone-e164'
+} from '@/lib/campaign-query'
+import { toE164 } from '@/lib/phone-e164'
 import {
   PRIYA_BRANCHING_SYSTEM_PROMPT,
   PRIYA_CAMPAIGN_FIRST_MESSAGE,
-} from '../../../../lib/vapi-priya-branching-prompt'
+} from '@/lib/vapi-priya-branching-prompt'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120

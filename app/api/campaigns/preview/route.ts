@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
 import {
   countMatchingLeads,
   previewMatchingLeads,
   type CampaignFilters,
   type CampaignScoreFilter,
-} from '../../../../lib/campaign-query'
+} from '@/lib/campaign-query'
 
 export const runtime = 'nodejs'
 

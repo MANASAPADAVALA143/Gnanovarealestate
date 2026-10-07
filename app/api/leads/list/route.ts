@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyAgentClaimPoolFilter } from '../../../../lib/campaign-query'
-import { isPipelineStage } from '../../../../lib/pipeline'
-import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
+import { applyAgentClaimPoolFilter } from '@/lib/campaign-query'
+import { isPipelineStage } from '@/lib/pipeline'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
 
 export const runtime = 'nodejs'
 

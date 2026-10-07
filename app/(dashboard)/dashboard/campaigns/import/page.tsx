@@ -9,8 +9,8 @@ import {
   NAME_ALIASES,
   PHONE_ALIASES,
   guessColumn,
-} from '../../../../../lib/import-column-guess'
-import { apiFetch } from '../../../../../lib/api-fetch'
+} from '@/lib/import-column-guess'
+import { apiFetch } from '@/lib/api-fetch'
 
 type PreviewState = {
   headers: string[]

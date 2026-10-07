@@ -6,7 +6,7 @@ import { Calendar, dateFnsLocalizer } from 'react-big-calendar'
 import { format, getDay, parse, startOfWeek } from 'date-fns'
 import { enUS } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
-import { apiFetch } from '../../../../lib/api-fetch'
+import { apiFetch } from '@/lib/api-fetch'
 
 type Viewing = {
   id: string

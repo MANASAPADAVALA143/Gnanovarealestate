@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import PropertyCard, { PropertyCardSkeleton } from '../../../components/properties/PropertyCard'
-import { apiFetch } from '../../../lib/api-fetch'
+import { apiFetch } from '@/lib/api-fetch'
 import type { Property, PropertySearchFilters, PropertyType } from '../../../types/property'
 
 type CachedEntry = {

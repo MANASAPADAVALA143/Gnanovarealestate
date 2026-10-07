@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAgentAuth, requireAgent } from '../../../lib/require-agent'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
 
 export const runtime = 'nodejs'
 

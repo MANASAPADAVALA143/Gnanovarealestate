@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import type { Property } from '../../../../types/property'
-import { requireAgentOrVapi } from '../../../../lib/require-vapi-secret'
+import { requireAgentOrVapi } from '@/lib/require-vapi-secret'
 
 type SendPropertyWhatsAppBody = {
   phone: string

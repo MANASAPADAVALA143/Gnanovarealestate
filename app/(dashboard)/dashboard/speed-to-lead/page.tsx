@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '../../../../lib/api-fetch'
+import { apiFetch } from '@/lib/api-fetch'
 import {
   Bar,
   BarChart,

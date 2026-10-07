@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { apiFetch } from '../../../../lib/api-fetch'
-import { TASK_TYPE_LABELS, type LeadTaskType } from '../../../../lib/pipeline'
+import { apiFetch } from '@/lib/api-fetch'
+import { TASK_TYPE_LABELS, type LeadTaskType } from '@/lib/pipeline'
 
 type TaskRow = {
   id: string

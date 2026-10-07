@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
-import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
 import {
   initImportJob,
   patchImportJob,
-} from '../../../../lib/leads-import-status'
+} from '@/lib/leads-import-status'
 import {
   normalizePhone,
   parseSpreadsheet,
@@ -15,7 +15,7 @@ import {
   PHONE_ALIASES,
   LOCATION_ALIASES,
   EMAIL_ALIASES,
-} from '../../../../lib/bulk-import-helpers'
+} from '@/lib/bulk-import-helpers'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300

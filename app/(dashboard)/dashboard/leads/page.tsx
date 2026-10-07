@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '../../../../lib/api-fetch'
-import { PIPELINE_STAGE_LABELS, PIPELINE_STAGES, type PipelineStage } from '../../../../lib/pipeline'
+import { apiFetch } from '@/lib/api-fetch'
+import { PIPELINE_STAGE_LABELS, PIPELINE_STAGES, type PipelineStage } from '@/lib/pipeline'
 
 type LeadRow = {
   id: string

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
 
 // Simple in-memory cache with TTL
 type CacheEntry<T> = {
