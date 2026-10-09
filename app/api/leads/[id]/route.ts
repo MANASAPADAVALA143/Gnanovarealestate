@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findAccessibleLead } from '../../../../../lib/lead-access'
-import { isAgentAuth, requireAgent } from '../../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../../lib/supabase-service'
+import { findAccessibleLead } from '@/lib/lead-access'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { getWorkspaceById } from '@/lib/workspace-server'
 
 export const runtime = 'nodejs'
 
 const LEAD_COLUMNS =
-  'id, name, phone, email, location, status, source, pipeline_stage, lead_score, score_label, agent_id, created_at, updated_at, timeline, budget_mentioned, interested_in, follow_up_action, call_transcript, agents ( id, full_name )'
+  'id, name, phone, email, location, status, source, pipeline_stage, lead_score, score_label, agent_id, created_at, updated_at, timeline, budget_mentioned, interested_in, follow_up_action, call_transcript, workspace_id, custom_fields, agents ( id, full_name )'
 
 export async function GET(
   req: NextRequest,
@@ -25,11 +26,13 @@ export async function GET(
 
     const agentEmbed = lead.agents as { id?: string; full_name?: string | null } | { id?: string; full_name?: string | null }[] | null
     const agent = Array.isArray(agentEmbed) ? agentEmbed[0] : agentEmbed
+    const workspace = await getWorkspaceById(supabase, lead.workspace_id as string | null)
 
     return NextResponse.json({
       lead: {
         ...lead,
         agent_name: agent?.full_name ?? null,
+        workspace_slug: workspace.slug,
       },
     })
   } catch (e: unknown) {

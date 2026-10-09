@@ -82,6 +82,34 @@ async function isManager(supabase: SupabaseClient, agentId: string | null): Prom
 }
 
 export async function sendWhatsAppOutbound(toRaw: string, body: string): Promise<string | null> {
+  return postMetaMessage(toRaw, { type: 'text', text: { body } })
+}
+
+/** Business-initiated message to a lead who has not messaged in the last 24h (Meta requires a template). */
+export async function sendWhatsAppTemplate(
+  toRaw: string,
+  templateName: string,
+  languageCode = 'en'
+): Promise<string | null> {
+  return postMetaMessage(toRaw, {
+    type: 'template',
+    template: { name: templateName, language: { code: languageCode } },
+  })
+}
+
+export async function sendWhatsAppDocument(
+  toRaw: string,
+  link: string,
+  filename: string,
+  caption?: string
+): Promise<string | null> {
+  return postMetaMessage(toRaw, {
+    type: 'document',
+    document: { link, filename, ...(caption ? { caption } : {}) },
+  })
+}
+
+async function postMetaMessage(toRaw: string, message: Record<string, unknown>): Promise<string | null> {
   // ── Meta Cloud API (active) ──────────────────────────────────────────────
   const token = process.env.WHATSAPP_TOKEN
   if (!token) {
@@ -95,8 +123,7 @@ export async function sendWhatsAppOutbound(toRaw: string, body: string): Promise
   const payload = {
     messaging_product: 'whatsapp',
     to,
-    type: 'text',
-    text: { body },
+    ...message,
   }
 
   let fetchResponse: globalThis.Response

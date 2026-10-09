@@ -1,3 +1,4 @@
+/** Every value of the `pipeline_stage` enum. Each workspace shows its own subset (see lib/workspaces.ts). */
 export const PIPELINE_STAGES = [
   'new',
   'contacted',
@@ -8,6 +9,10 @@ export const PIPELINE_STAGES = [
   'booked',
   'closed',
   'lost',
+  'brochure_sent',
+  'meeting_scheduled',
+  'site_visit',
+  'registered',
 ] as const
 
 export type PipelineStage = (typeof PIPELINE_STAGES)[number]
@@ -22,6 +27,10 @@ export const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
   booked: 'Booked',
   closed: 'Closed',
   lost: 'Lost',
+  brochure_sent: 'Brochure Sent',
+  meeting_scheduled: 'Meeting Scheduled',
+  site_visit: 'Site Visit',
+  registered: 'Registered',
 }
 
 export function isPipelineStage(value: string): value is PipelineStage {

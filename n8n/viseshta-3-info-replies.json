@@ -1,0 +1,62 @@
+{
+  "name": "Viseshta 3 - WhatsApp INFO Replies -> Gnanova + Bolna",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"]
+      },
+      "id": "c3f0c6c2-1b1e-4c55-9d1a-000000000001",
+      "name": "WhatsApp Reply Received",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [0, 300],
+      "webhookId": "c3f0c6c2-1b1e-4c55-9d1a-0000000000bb"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keep only messages that say INFO (typed text or the template's Quick Reply button).\nconst out = [];\nfor (const { json } of $input.all()) {\n  const names = Object.fromEntries((json.contacts ?? []).map((c) => [c.wa_id, c.profile?.name]));\n  for (const m of json.messages ?? []) {\n    const text = String(m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? '').trim().toUpperCase();\n    if (text !== 'INFO') continue;\n    out.push({\n      json: {\n        workspace: 'viseshta-avenues',\n        name: names[m.from] || 'WhatsApp Lead',\n        phone: '+' + m.from,\n        source: 'Cold Database',\n        campaign: 'Bulk Outreach - Excel',\n        reply_keyword: 'INFO',\n      },\n    });\n  }\n}\nreturn out;"
+      },
+      "id": "c3f0c6c2-1b1e-4c55-9d1a-000000000002",
+      "name": "Only INFO Replies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://gnanovacrm.vercel.app/api/leads/portal-intake",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "c3f0c6c2-1b1e-4c55-9d1a-000000000003",
+      "name": "Add to Gnanova + Brochure + Bolna Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "notes": "New contact: Gnanova creates the lead (stage New Lead, source Cold Database), replies with full INFO details + brochure and triggers the Bolna call. Existing lead: Gnanova just sends the INFO details."
+    }
+  ],
+  "connections": {
+    "WhatsApp Reply Received": {
+      "main": [[{ "node": "Only INFO Replies", "type": "main", "index": 0 }]]
+    },
+    "Only INFO Replies": {
+      "main": [[{ "node": "Add to Gnanova + Brochure + Bolna Call", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata"
+  },
+  "pinData": {}
+}

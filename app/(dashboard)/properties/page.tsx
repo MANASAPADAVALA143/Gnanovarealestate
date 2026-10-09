@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import PropertyCard, { PropertyCardSkeleton } from '../../../components/properties/PropertyCard'
+import PropertyCard, { PropertyCardSkeleton } from '@/components/properties/PropertyCard'
+import WorkspaceProperties from '@/components/properties/WorkspaceProperties'
 import { apiFetch } from '@/lib/api-fetch'
-import type { Property, PropertySearchFilters, PropertyType } from '../../../types/property'
+import { useWorkspace } from '@/lib/workspace-client'
+import type { Property, PropertySearchFilters, PropertyType } from '@/types/property'
 
 type CachedEntry = {
   properties: Property[]
@@ -22,6 +24,12 @@ const PROPERTY_TYPE_OPTIONS: { label: string; value: PropertyType }[] = [
 const PAGE_SIZE = 6
 
 export default function PropertiesPage() {
+  const workspace = useWorkspace()
+  if (workspace.project) return <WorkspaceProperties workspace={workspace} />
+  return <PropertySearch />
+}
+
+function PropertySearch() {
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
 

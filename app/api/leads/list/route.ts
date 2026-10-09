@@ -3,6 +3,7 @@ import { applyAgentClaimPoolFilter } from '@/lib/campaign-query'
 import { isPipelineStage } from '@/lib/pipeline'
 import { isAgentAuth, requireAgent } from '@/lib/require-agent'
 import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { getRequestWorkspace } from '@/lib/workspace-server'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
     const q = (searchParams.get('q') || '').trim()
     const stage = (searchParams.get('stage') || '').trim()
     const scoreLabel = (searchParams.get('scoreLabel') || '').trim().toLowerCase()
+    const source = (searchParams.get('source') || '').trim()
     const limit = Math.min(500, Math.max(1, Number(searchParams.get('limit') ?? 200)))
 
     if (stage && !isPipelineStage(stage)) {
@@ -27,17 +29,20 @@ export async function GET(req: NextRequest) {
     }
 
     const supabase = getSupabaseServiceClient()
+    const workspace = await getRequestWorkspace(supabase, req)
     let query = supabase
       .from('leads')
       .select(
         'id, name, phone, email, location, status, source, pipeline_stage, lead_score, score_label, agent_id, created_at, updated_at, agents ( id, full_name )'
       )
+      .eq('workspace_id', workspace.id)
       .order('created_at', { ascending: false })
       .limit(limit)
 
     query = applyAgentClaimPoolFilter(query, auth.agentId)
 
     if (stage) query = query.eq('pipeline_stage', stage)
+    if (source) query = query.eq('source', source)
     if (scoreLabel) query = query.ilike('score_label', scoreLabel)
     if (q) {
       const escaped = q.replace(/[%_,]/g, '')

@@ -3,14 +3,14 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '../../../../../lib/api-fetch'
+import { apiFetch } from '@/lib/api-fetch'
 import {
   PIPELINE_STAGE_LABELS,
-  PIPELINE_STAGES,
   TASK_TYPE_LABELS,
   type LeadTaskType,
   type PipelineStage,
-} from '../../../../../lib/pipeline'
+} from '@/lib/pipeline'
+import { formatMoney, getWorkspaceConfig } from '@/lib/workspaces'
 
 type Lead = {
   id: string
@@ -27,6 +27,8 @@ type Lead = {
   budget_mentioned: string | null
   interested_in: string | null
   follow_up_action: string | null
+  workspace_slug: string | null
+  custom_fields: Record<string, string | number> | null
 }
 
 type Activity = {
@@ -292,7 +294,8 @@ export default function Lead360Page() {
     setSendingWA(property.id)
     setError(null)
     try {
-      const msg = `Hi ${lead.name}, here is a property that matches your requirements:\n\n🏠 ${property.title || property.address || 'Property'}\n📍 ${property.city || property.address || ''}\n${property.price ? `💰 AED ${property.price.toLocaleString()}` : ''}\n${property.bedrooms ? `🛏 ${property.bedrooms} bed` : ''}\n\nWould you like to schedule a viewing?`
+      const currency = getWorkspaceConfig(lead.workspace_slug).currency
+      const msg = `Hi ${lead.name}, here is a property that matches your requirements:\n\n🏠 ${property.title || property.address || 'Property'}\n📍 ${property.city || property.address || ''}\n${property.price ? `💰 ${formatMoney(property.price, currency)}` : ''}\n${property.bedrooms ? `🛏 ${property.bedrooms} bed` : ''}\n\nWould you like to schedule a viewing?`
       const res = await apiFetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -326,6 +329,8 @@ export default function Lead360Page() {
 
   const tel = `tel:${lead.phone}`
   const wa = `https://wa.me/${lead.phone.replace(/\D/g, '')}`
+  const workspace = getWorkspaceConfig(lead.workspace_slug)
+  const customFieldDefs = workspace.leadFields.filter((f) => f.customKey)
 
   return (
     <div className="space-y-6">
@@ -358,7 +363,7 @@ export default function Lead360Page() {
               onChange={(e) => void changeStage(e.target.value)}
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800"
             >
-              {PIPELINE_STAGES.map((s) => (
+              {workspace.pipelineStages.map((s) => (
                 <option key={s} value={s}>
                   {PIPELINE_STAGE_LABELS[s]}
                 </option>
@@ -418,20 +423,40 @@ export default function Lead360Page() {
           </div>
         )}
 
-        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-          <div className="rounded-lg bg-slate-50 p-3">
-            <dt className="text-xs text-slate-500">Budget</dt>
-            <dd className="mt-1 text-slate-800">{lead.budget_mentioned || '—'}</dd>
-          </div>
-          <div className="rounded-lg bg-slate-50 p-3">
-            <dt className="text-xs text-slate-500">Location</dt>
-            <dd className="mt-1 text-slate-800">{lead.location || '—'}</dd>
-          </div>
-          <div className="rounded-lg bg-slate-50 p-3">
-            <dt className="text-xs text-slate-500">Timeline</dt>
-            <dd className="mt-1 text-slate-800">{lead.timeline || '—'}</dd>
-          </div>
-        </dl>
+        {customFieldDefs.length > 0 ? (
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg bg-slate-50 p-3">
+              <dt className="text-xs text-slate-500">Source</dt>
+              <dd className="mt-1 text-slate-800">{lead.source || '—'}</dd>
+            </div>
+            {customFieldDefs.map((f) => (
+              <div
+                key={f.customKey}
+                className={`rounded-lg bg-slate-50 p-3 ${f.type === 'textarea' ? 'sm:col-span-3' : ''}`}
+              >
+                <dt className="text-xs text-slate-500">{f.label}</dt>
+                <dd className="mt-1 whitespace-pre-wrap text-slate-800">
+                  {lead.custom_fields?.[f.customKey as string] ?? '—'}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg bg-slate-50 p-3">
+              <dt className="text-xs text-slate-500">Budget</dt>
+              <dd className="mt-1 text-slate-800">{lead.budget_mentioned || '—'}</dd>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <dt className="text-xs text-slate-500">Location</dt>
+              <dd className="mt-1 text-slate-800">{lead.location || '—'}</dd>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <dt className="text-xs text-slate-500">Timeline</dt>
+              <dd className="mt-1 text-slate-800">{lead.timeline || '—'}</dd>
+            </div>
+          </dl>
+        )}
       </div>
 
       {error && (
@@ -575,7 +600,7 @@ export default function Lead360Page() {
                   {p.property_type ? ` · ${p.property_type}` : ''}
                 </p>
                 {p.price != null && (
-                  <p className="text-sm font-bold text-slate-800 mt-1">AED {p.price.toLocaleString()}</p>
+                  <p className="text-sm font-bold text-slate-800 mt-1">{formatMoney(p.price, workspace.currency)}</p>
                 )}
                 {p.similarity != null && (
                   <span className="inline-flex mt-1 items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">

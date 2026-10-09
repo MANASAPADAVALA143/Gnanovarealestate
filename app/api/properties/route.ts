@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAgentAuth, requireAgent } from '@/lib/require-agent'
 import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { getRequestWorkspace } from '@/lib/workspace-server'
 
 export const runtime = 'nodejs'
+
+const PROPERTY_COLUMNS =
+  'id, title, address, city, zip_code, price, bedrooms, property_type, status, description, monthly_rental, total_units, available_units, yearly_appreciation_pct, security_note'
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,10 +15,12 @@ export async function GET(req: NextRequest) {
 
     const limit = Math.min(500, Math.max(1, Number(new URL(req.url).searchParams.get('limit') ?? 100)))
     const supabase = getSupabaseServiceClient()
+    const workspace = await getRequestWorkspace(supabase, req)
 
     let query = supabase
       .from('properties')
-      .select('id, title, address, city, price, bedrooms, property_type, status')
+      .select(PROPERTY_COLUMNS)
+      .eq('workspace_id', workspace.id)
       .order('created_at', { ascending: false })
       .limit(limit)
 
@@ -24,7 +30,8 @@ export async function GET(req: NextRequest) {
     if (error) {
       const fallback = await supabase
         .from('properties')
-        .select('id, title, address, city, price, bedrooms, property_type, status')
+        .select(PROPERTY_COLUMNS)
+        .eq('workspace_id', workspace.id)
         .order('created_at', { ascending: false })
         .limit(limit)
       if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 400 })

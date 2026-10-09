@@ -1,0 +1,321 @@
+{
+  "name": "Viseshta 2 - Bulk WhatsApp Outreach (Google Sheet)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000001",
+      "name": "Run Now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000002",
+      "name": "Daily 10 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 400]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "PASTE_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Contacts",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000003",
+      "name": "Read Contacts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [240, 300],
+      "notes": "Sheet tab 'Contacts' with headers: Name | Phone | Status | Sent At. Rows with an empty Status are pending."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pending rows only (empty Status), valid Indian/E.164 numbers, de-duplicated, capped per run.\n// Keep DAILY_LIMIT below your Meta messaging tier (new numbers: 250 unique contacts / 24h).\nconst DAILY_LIMIT = 200;\n\nconst toWa = (raw) => {\n  let d = String(raw ?? '').replace(/\\D/g, '');\n  if (d.length === 10) d = '91' + d;\n  else if (d.length === 11 && d.startsWith('0')) d = '91' + d.slice(1);\n  return d;\n};\n\nconst seen = new Set();\nconst out = [];\nfor (const { json } of $input.all()) {\n  if (String(json.Status ?? '').trim()) continue;\n  const wa = toWa(json.Phone);\n  if (wa.length < 11 || wa.length > 15 || seen.has(wa)) continue;\n  seen.add(wa);\n  out.push({\n    json: {\n      name: String(json.Name ?? '').trim().split(/\\s+/)[0] || 'there',\n      wa,\n      row_number: json.row_number,\n    },\n  });\n  if (out.length >= DAILY_LIMIT) break;\n}\nreturn out;"
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000004",
+      "name": "Pick Pending Contacts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000005",
+      "name": "Loop Contacts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://gnanovacrm.vercel.app/api/leads/lookup",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.wa }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000006",
+      "name": "Already in Gnanova?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.exists }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000007",
+      "name": "Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/PASTE_WHATSAPP_PHONE_NUMBER_ID/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  messaging_product: 'whatsapp',\n  to: $('Loop Contacts').item.json.wa,\n  type: 'template',\n  template: {\n    name: 'viseshta_outreach',\n    language: { code: 'en' },\n    components: [\n      { type: 'body', parameters: [{ type: 'text', text: $('Loop Contacts').item.json.name }] }\n    ]\n  }\n}) }}",
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000008",
+      "name": "Send WhatsApp Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 300],
+      "onError": "continueErrorOutput",
+      "notes": "Template 'viseshta_outreach' must be APPROVED in WhatsApp Manager, with {{1}} = first name and a Quick Reply button 'INFO'."
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "PASTE_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Contacts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Loop Contacts').item.json.row_number }}",
+            "Status": "sent",
+            "Sent At": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}"
+          },
+          "matchingColumns": ["row_number"],
+          "schema": [
+            { "id": "row_number", "displayName": "row_number", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "readOnly": true, "removed": false },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "Sent At", "displayName": "Sent At", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000009",
+      "name": "Mark Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1680, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "PASTE_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Contacts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Loop Contacts').item.json.row_number }}",
+            "Status": "skipped - already in CRM",
+            "Sent At": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}"
+          },
+          "matchingColumns": ["row_number"],
+          "schema": [
+            { "id": "row_number", "displayName": "row_number", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "readOnly": true, "removed": false },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "Sent At", "displayName": "Sent At", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000010",
+      "name": "Mark Skipped",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1440, 60]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "PASTE_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Contacts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $('Loop Contacts').item.json.row_number }}",
+            "Status": "={{ 'failed: ' + String($json.error?.message ?? $json.error ?? 'unknown error').slice(0, 200) }}",
+            "Sent At": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}"
+          },
+          "matchingColumns": ["row_number"],
+          "schema": [
+            { "id": "row_number", "displayName": "row_number", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "readOnly": true, "removed": false },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "Sent At", "displayName": "Sent At", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000011",
+      "name": "Mark Failed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1680, 440]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "b2f0c6c2-1b1e-4c55-9d1a-000000000012",
+      "name": "Wait 2s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1920, 200],
+      "webhookId": "b2f0c6c2-1b1e-4c55-9d1a-0000000000aa"
+    }
+  ],
+  "connections": {
+    "Run Now": {
+      "main": [[{ "node": "Read Contacts", "type": "main", "index": 0 }]]
+    },
+    "Daily 10 AM": {
+      "main": [[{ "node": "Read Contacts", "type": "main", "index": 0 }]]
+    },
+    "Read Contacts": {
+      "main": [[{ "node": "Pick Pending Contacts", "type": "main", "index": 0 }]]
+    },
+    "Pick Pending Contacts": {
+      "main": [[{ "node": "Loop Contacts", "type": "main", "index": 0 }]]
+    },
+    "Loop Contacts": {
+      "main": [
+        [],
+        [{ "node": "Already in Gnanova?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Already in Gnanova?": {
+      "main": [
+        [{ "node": "Exists?", "type": "main", "index": 0 }],
+        [{ "node": "Mark Failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Exists?": {
+      "main": [
+        [{ "node": "Mark Skipped", "type": "main", "index": 0 }],
+        [{ "node": "Send WhatsApp Template", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send WhatsApp Template": {
+      "main": [
+        [{ "node": "Mark Sent", "type": "main", "index": 0 }],
+        [{ "node": "Mark Failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Mark Sent": {
+      "main": [[{ "node": "Wait 2s", "type": "main", "index": 0 }]]
+    },
+    "Wait 2s": {
+      "main": [[{ "node": "Loop Contacts", "type": "main", "index": 0 }]]
+    },
+    "Mark Skipped": {
+      "main": [[{ "node": "Loop Contacts", "type": "main", "index": 0 }]]
+    },
+    "Mark Failed": {
+      "main": [[{ "node": "Loop Contacts", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata"
+  },
+  "pinData": {}
+}

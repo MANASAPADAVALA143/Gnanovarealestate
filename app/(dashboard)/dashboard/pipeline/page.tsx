@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/api-fetch'
-import { PIPELINE_STAGE_LABELS, PIPELINE_STAGES, type PipelineStage } from '@/lib/pipeline'
+import { PIPELINE_STAGE_LABELS, type PipelineStage } from '@/lib/pipeline'
+import { useWorkspace } from '@/lib/workspace-client'
 
 type LeadCard = {
   id: string
@@ -24,6 +25,7 @@ function scoreBadgeClass(score: number | null, label: string | null) {
 }
 
 export default function PipelinePage() {
+  const workspace = useWorkspace()
   const [leads, setLeads] = useState<LeadCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,19 +50,21 @@ export default function PipelinePage() {
     void load()
   }, [load])
 
+  const stages = workspace.pipelineStages
+
   const grouped = useMemo(() => {
-    const map = Object.fromEntries(PIPELINE_STAGES.map((s) => [s, [] as LeadCard[]])) as Record<
+    const map = Object.fromEntries(stages.map((s) => [s, [] as LeadCard[]])) as Record<
       PipelineStage,
       LeadCard[]
     >
     for (const lead of leads) {
-      const stage = (PIPELINE_STAGES.includes(lead.pipeline_stage as PipelineStage)
+      const stage = (stages.includes(lead.pipeline_stage as PipelineStage)
         ? lead.pipeline_stage
         : 'new') as PipelineStage
       map[stage].push(lead)
     }
     return map
-  }, [leads])
+  }, [leads, stages])
 
   async function moveLead(leadId: string, stage: PipelineStage) {
     setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, pipeline_stage: stage } : l)))
@@ -79,7 +83,7 @@ export default function PipelinePage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Pipeline</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{workspace.pipelineName}</h1>
         <p className="text-sm text-slate-500 mt-1">Drag cards between stages. Click a card for Lead 360.</p>
       </div>
       {error && (
@@ -89,7 +93,7 @@ export default function PipelinePage() {
         <p className="text-sm text-slate-400 py-12 text-center">Loading pipeline…</p>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {PIPELINE_STAGES.map((stage) => (
+          {stages.map((stage) => (
             <div
               key={stage}
               className="w-64 flex-shrink-0 rounded-xl border border-slate-200 bg-slate-50"

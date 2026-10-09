@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Buffer } from 'node:buffer'
 import { isAgentAuth, requireAgent } from '@/lib/require-agent'
 import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { getRequestWorkspace } from '@/lib/workspace-server'
+import { DEFAULT_WORKSPACE_SLUG } from '@/lib/workspaces'
 import {
   initImportJob,
   patchImportJob,
@@ -30,11 +32,12 @@ type LeadUpsert = {
   status: string
   source: string
   agent_id: string
+  workspace_id: string
   created_at: string
   updated_at: string
 }
 
-type LeadRowDraft = Omit<LeadUpsert, 'agent_id'>
+type LeadRowDraft = Omit<LeadUpsert, 'agent_id' | 'workspace_id'>
 
 function isUuid(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -104,7 +107,13 @@ function buildRows(
   return { leads, fileDuplicates, rowErrors, errorSamples }
 }
 
-async function upsertBatches(jobId: string, leads: LeadUpsert[], baseErrors: number, baseSamples: string[]) {
+async function upsertBatches(
+  jobId: string,
+  leads: LeadUpsert[],
+  baseErrors: number,
+  baseSamples: string[],
+  ignoreDuplicates: boolean
+) {
   const supabase = getSupabaseServiceClient()
   let imported = 0
   let errors = baseErrors
@@ -115,6 +124,7 @@ async function upsertBatches(jobId: string, leads: LeadUpsert[], baseErrors: num
       const chunk = leads.slice(i, i + BATCH)
       const { error } = await supabase.from('leads').upsert(chunk, {
         onConflict: 'phone',
+        ignoreDuplicates,
       })
       if (error) {
         errors += chunk.length
@@ -191,9 +201,11 @@ export async function POST(req: NextRequest) {
       locationColumn || null,
       emailColumn || null
     )
+    const workspace = await getRequestWorkspace(getSupabaseServiceClient(), req)
     const leads = built.leads.map((lead) => ({
       ...lead,
       agent_id: auth.agentId,
+      workspace_id: workspace.id,
     }))
     const { fileDuplicates, rowErrors, errorSamples } = built
 
@@ -204,7 +216,8 @@ export async function POST(req: NextRequest) {
       errorSamples,
     })
 
-    void upsertBatches(jobId, leads, rowErrors, errorSamples)
+    // Phones are unique across workspaces; never move an existing lead out of its workspace.
+    void upsertBatches(jobId, leads, rowErrors, errorSamples, workspace.slug !== DEFAULT_WORKSPACE_SLUG)
 
     return NextResponse.json({
       jobId,

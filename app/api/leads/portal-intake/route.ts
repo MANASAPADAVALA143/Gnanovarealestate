@@ -4,6 +4,8 @@ import { getSupabaseServiceClient } from '@/lib/supabase-service'
 import { normalizePhone } from '@/lib/bulk-import-helpers'
 import { toE164 } from '@/lib/phone-e164'
 import { onLeadCreated } from '@/lib/crm-hooks'
+import { intakeWorkspaceLead } from '@/lib/workspace-intake'
+import { DEFAULT_WORKSPACE_SLUG } from '@/lib/workspaces'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -36,6 +38,12 @@ export async function POST(req: NextRequest) {
   }
 
   const str = (v: unknown) => (typeof v === 'string' ? v : v != null ? String(v) : '')
+
+  const workspaceSlug = str(body.workspace)
+  if (workspaceSlug && workspaceSlug !== DEFAULT_WORKSPACE_SLUG) {
+    const result = await intakeWorkspaceLead(workspaceSlug, body, 'portal_intake')
+    return NextResponse.json(result.body, { status: result.status })
+  }
 
   const name =
     str(body.name) ||

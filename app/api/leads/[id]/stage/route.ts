@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findAccessibleLead } from '../../../../../../lib/lead-access'
-import { isPipelineStage } from '../../../../../../lib/pipeline'
-import { isAgentAuth, requireAgent } from '../../../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../../../lib/supabase-service'
+import { findAccessibleLead } from '@/lib/lead-access'
+import { isPipelineStage } from '@/lib/pipeline'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { getWorkspaceById } from '@/lib/workspace-server'
 
 export const runtime = 'nodejs'
 
@@ -24,8 +25,16 @@ export async function PATCH(
     }
 
     const supabase = getSupabaseServiceClient()
-    const existing = await findAccessibleLead(supabase, leadId, auth.agentId, 'id')
+    const existing = await findAccessibleLead(supabase, leadId, auth.agentId, 'id, workspace_id')
     if (!existing) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+
+    const workspace = await getWorkspaceById(supabase, existing.workspace_id as string | null)
+    if (!workspace.pipelineStages.includes(stage)) {
+      return NextResponse.json(
+        { error: `Stage "${stage}" is not part of the ${workspace.pipelineName} pipeline` },
+        { status: 400 }
+      )
+    }
 
     const { data, error } = await supabase
       .from('leads')

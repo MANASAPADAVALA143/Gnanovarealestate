@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
+import { setSelectedWorkspaceSlug, useWorkspace } from '@/lib/workspace-client'
+import { WORKSPACE_LIST, type WorkspaceSlug } from '@/lib/workspaces'
 
 const nav = [
   { href: '/dashboard', label: 'Overview' },
@@ -17,7 +19,7 @@ const nav = [
   { href: '/dashboard/suites', label: 'Suites' },
   { href: '/dashboard/payments', label: 'Collections' },
   { href: '/dashboard/commissions', label: 'Commission' },
-  { href: '/dashboard/properties', label: 'Properties' },
+  { href: '/properties', label: 'Properties' },
   { href: '/dashboard/campaigns', label: 'Campaigns' },
   { href: '/dashboard/speed-to-lead', label: 'Speed-to-Lead' },
   { href: '/dashboard/leads/scored', label: 'Hot Leads ⚡' },
@@ -26,6 +28,7 @@ const nav = [
 export default function DashboardGroupLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const workspace = useWorkspace()
 
   useEffect(() => {
     let cancelled = false
@@ -81,7 +84,22 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
           </div>
         </div>
         <div className="max-w-6xl mx-auto px-6 py-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-slate-900 mr-2">Gnanova</span>
+          <span className="text-sm font-semibold text-slate-900">Gnanova</span>
+          <select
+            aria-label="Workspace"
+            value={workspace.slug}
+            onChange={(e) => {
+              setSelectedWorkspaceSlug(e.target.value as WorkspaceSlug)
+              window.location.reload()
+            }}
+            className="mr-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-800"
+          >
+            {WORKSPACE_LIST.map((w) => (
+              <option key={w.slug} value={w.slug}>
+                {w.name}
+              </option>
+            ))}
+          </select>
           {nav.map((item) => (
             <Link
               key={item.href}

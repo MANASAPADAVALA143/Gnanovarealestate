@@ -57,6 +57,7 @@ import { runOpenHouseScheduler } from './server/lib/open-house-scheduler.ts'
 import { runNudgeScheduler } from './server/lib/nudge-scheduler.ts'
 import { handleWhatsAppInboundWebhook, processInboundWhatsApp } from './server/lib/whatsapp-inbound.ts'
 import { handleBotReply, startBotForLead } from './server/lib/whatsapp-bot.ts'
+import { handleWorkspaceKeywordReply } from './lib/workspace-automations.ts'
 import {
   createDealHandler,
   listDealsHandler,
@@ -1144,7 +1145,9 @@ app.post('/webhook/whatsapp/inbound', async (req, res) => {
             const text = msg.text?.body || msg.button?.text || `[${msg.type}]`
             console.log(`[whatsapp-inbound] Meta message from +${from}: ${text}`)
             try {
-              const handledByBot = await handleBotReply(`+${from}`, text)
+              const handledByBot =
+                (await handleWorkspaceKeywordReply(getSupabaseServerClient(), `+${from}`, text)) ||
+                (await handleBotReply(`+${from}`, text))
               if (!handledByBot) {
                 await processInboundWhatsApp({
                   from: `+${from}`,

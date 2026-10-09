@@ -77,6 +77,20 @@ WHATSAPP_PHONE_NUMBER_ID=1298685323329504
 # WABA_ID=955765654192959  (reference only, not needed in code)
 # APP_ID=2235996580596817  (reference only, not needed in code)
 
+# ── Viseshta Avenues workspace automations ──
+# Bolna outbound call on every new Viseshta lead (agent: "Viseshta Telugu Agent", Telugu + English)
+BOLNA_API_KEY=REPLACE_ME
+BOLNA_VISESHTA_AGENT_ID=REPLACE_ME
+# Optional: caller ID purchased/connected in Bolna (E.164)
+# BOLNA_FROM_PHONE_NUMBER=+91XXXXXXXXXX
+# Meta only delivers business-initiated messages to new leads via an approved template.
+# Create a template with the Viseshta welcome text in WhatsApp Manager and put its name here;
+# without it the welcome is sent as plain text (works only inside a 24h customer-service window).
+WHATSAPP_VISESHTA_WELCOME_TEMPLATE=
+WHATSAPP_TEMPLATE_LANGUAGE=en
+# Public PDF URL sent as a WhatsApp document after the welcome message
+VISESHTA_BROCHURE_URL=
+
 # ============================================
 # Twilio — Voice/SMS only (WhatsApp migrated to Meta above)
 # ============================================

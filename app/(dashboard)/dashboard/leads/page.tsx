@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import AddLeadModal from '@/components/leads/AddLeadModal'
 import { apiFetch } from '@/lib/api-fetch'
-import { PIPELINE_STAGE_LABELS, PIPELINE_STAGES, type PipelineStage } from '@/lib/pipeline'
+import { PIPELINE_STAGE_LABELS, type PipelineStage } from '@/lib/pipeline'
+import { useWorkspace } from '@/lib/workspace-client'
 
 type LeadRow = {
   id: string
@@ -28,10 +30,12 @@ function scoreBadgeClass(score: number | null, label: string | null) {
 }
 
 function stageBadgeClass(stage: string) {
-  if (stage === 'closed' || stage === 'booked') return 'bg-emerald-100 text-emerald-800'
+  if (stage === 'closed' || stage === 'booked' || stage === 'registered') return 'bg-emerald-100 text-emerald-800'
   if (stage === 'lost') return 'bg-red-100 text-red-800'
-  if (stage === 'negotiation') return 'bg-violet-100 text-violet-800'
-  if (stage.startsWith('viewing')) return 'bg-blue-100 text-blue-800'
+  if (stage === 'negotiation' || stage === 'brochure_sent') return 'bg-violet-100 text-violet-800'
+  if (stage.startsWith('viewing') || stage === 'meeting_scheduled' || stage === 'site_visit') {
+    return 'bg-blue-100 text-blue-800'
+  }
   return 'bg-slate-100 text-slate-700'
 }
 
@@ -43,12 +47,16 @@ function formatWhen(iso: string | null) {
 }
 
 export default function LeadsListPage() {
+  const workspace = useWorkspace()
   const [q, setQ] = useState('')
   const [stage, setStage] = useState('')
+  const [source, setSource] = useState('')
   const [scoreLabel, setScoreLabel] = useState('')
   const [leads, setLeads] = useState<LeadRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,6 +65,7 @@ export default function LeadsListPage() {
       const params = new URLSearchParams({ limit: '300' })
       if (q.trim()) params.set('q', q.trim())
       if (stage) params.set('stage', stage)
+      if (source) params.set('source', source)
       if (scoreLabel) params.set('scoreLabel', scoreLabel)
       const res = await apiFetch(`/api/leads/list?${params}`)
       const j = (await res.json().catch(() => ({}))) as { error?: string; leads?: LeadRow[] }
@@ -67,7 +76,7 @@ export default function LeadsListPage() {
     } finally {
       setLoading(false)
     }
-  }, [q, stage, scoreLabel])
+  }, [q, stage, source, scoreLabel])
 
   useEffect(() => {
     const t = window.setTimeout(() => void load(), 250)
@@ -79,17 +88,30 @@ export default function LeadsListPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Leads</h1>
-          <p className="text-sm text-slate-500 mt-1">Search, filter, and open Lead 360</p>
+          <p className="text-sm text-slate-500 mt-1">{workspace.name} · Search, filter, and open Lead 360</p>
         </div>
-        <Link
-          href="/dashboard/leads/scored"
-          className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          Hot Leads
-        </Link>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+          >
+            Add lead
+          </button>
+          <Link
+            href="/dashboard/leads/scored"
+            className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Hot Leads
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {notice && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">{notice}</div>
+      )}
+
+      <div className={`grid grid-cols-1 gap-3 ${workspace.sourceTags ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         <label className="text-xs font-medium text-slate-700">
           Search
           <input
@@ -107,13 +129,30 @@ export default function LeadsListPage() {
             className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
           >
             <option value="">All stages</option>
-            {PIPELINE_STAGES.map((s) => (
+            {workspace.pipelineStages.map((s) => (
               <option key={s} value={s}>
                 {PIPELINE_STAGE_LABELS[s]}
               </option>
             ))}
           </select>
         </label>
+        {workspace.sourceTags && (
+          <label className="text-xs font-medium text-slate-700">
+            Source
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+            >
+              <option value="">All sources</option>
+              {workspace.sourceTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="text-xs font-medium text-slate-700">
           Score
           <select
@@ -197,6 +236,18 @@ export default function LeadsListPage() {
           </tbody>
         </table>
       </div>
+
+      {showAdd && (
+        <AddLeadModal
+          workspace={workspace}
+          onClose={() => setShowAdd(false)}
+          onCreated={(summary) => {
+            setShowAdd(false)
+            setNotice(summary)
+            void load()
+          }}
+        />
+      )}
     </div>
   )
 }

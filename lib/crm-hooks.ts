@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { startBotForLead } from '../server/lib/whatsapp-bot.ts'
+import { getWorkspaceById } from './workspace-server'
 
 export type CrmOnLeadCreatedParams = {
   leadId: string
@@ -115,10 +116,11 @@ export async function onLeadCreated(
   try {
     const { data: lead } = await supabase
       .from('leads')
-      .select('name, phone')
+      .select('name, phone, workspace_id')
       .eq('id', leadId)
       .maybeSingle()
-    if (lead?.phone) {
+    const workspace = await getWorkspaceById(supabase, lead?.workspace_id)
+    if (lead?.phone && workspace.automations.whatsappQualificationBot) {
       void startBotForLead(leadId, lead.name || 'there', lead.phone)
     }
   } catch (e) {
