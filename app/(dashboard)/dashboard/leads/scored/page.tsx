@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '../../../../../components/ui/dialog'
+} from '@/components/ui/dialog'
 import { apiFetch } from '@/lib/api-fetch'
 
 type TabId = 'all' | 'hot' | 'warm' | 'cold' | 'dead'

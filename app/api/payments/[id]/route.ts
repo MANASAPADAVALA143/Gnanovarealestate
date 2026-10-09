@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAgentAuth, requireAgent } from '../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../lib/supabase-service'
-import { syncSuiteBalance } from '../../../../lib/suite-balance'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
+import { syncSuiteBalance } from '@/lib/suite-balance'
 
 export const runtime = 'nodejs'
 

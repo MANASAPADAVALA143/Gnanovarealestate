@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireVapiSecret } from '@/lib/require-vapi-secret'
 import { getSupabaseServiceClient } from '@/lib/supabase-service'
 import { inferLeadTypeAndUrgencyFromTranscript } from '@/lib/lead-transcript-signals'
-import { extractZip, matchAgent } from '../../../../server/lib/agent-matcher'
-import { brokerHasHumanContactedLead } from '../../../../server/lib/broker-human-contact'
-import { sendAgentPlainSms, sendAgentSMSAlert } from '../../../../server/lib/sms-alert'
+import { extractZip, matchAgent } from '@/server/lib/agent-matcher'
+import { brokerHasHumanContactedLead } from '@/server/lib/broker-human-contact'
+import { sendAgentPlainSms, sendAgentSMSAlert } from '@/server/lib/sms-alert'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findAccessibleLead } from '../../../../../../lib/lead-access'
-import { isAgentAuth, requireAgent } from '../../../../../../lib/require-agent'
-import { getSupabaseServiceClient } from '../../../../../../lib/supabase-service'
+import { findAccessibleLead } from '@/lib/lead-access'
+import { isAgentAuth, requireAgent } from '@/lib/require-agent'
+import { getSupabaseServiceClient } from '@/lib/supabase-service'
 
 export const runtime = 'nodejs'
 

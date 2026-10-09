@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { handlePortalLead, type NormalisedLead } from '../../../../server/lib/portal-intake'
+import { handlePortalLead, type NormalisedLead } from '@/server/lib/portal-intake'
 
 export const runtime = 'nodejs'
 

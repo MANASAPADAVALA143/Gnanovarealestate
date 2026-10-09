@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-import type { Property, PropertySearchResult } from '../../../../types/property'
-import { requireAgentOrVapi } from '../../../../lib/require-vapi-secret'
+import type { Property, PropertySearchResult } from '@/types/property'
+import { requireAgentOrVapi } from '@/lib/require-vapi-secret'
 
 type RouteParams = {
   params: {

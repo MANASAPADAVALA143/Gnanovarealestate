@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '../../../../../lib/api-fetch'
+import { apiFetch } from '@/lib/api-fetch'
 
 type Campaign = {
   id: string

@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { apiFetch } from '../../../../../lib/api-fetch'
-import { formatAed } from '../../../../../lib/pipeline'
+import { apiFetch } from '@/lib/api-fetch'
+import { formatAed } from '@/lib/pipeline'
 
 type Suite = {
   id: string

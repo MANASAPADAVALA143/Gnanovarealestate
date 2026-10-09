@@ -8,7 +8,7 @@ import {
   PRIYA_BRANCHING_SYSTEM_PROMPT,
   PRIYA_CAMPAIGN_FIRST_MESSAGE,
 } from '@/lib/vapi-priya-branching-prompt'
-import { sendAgentSMSAlert } from '../../../../server/lib/sms-alert'
+import { sendAgentSMSAlert } from '@/server/lib/sms-alert'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120

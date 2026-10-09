@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import PropertyCard from '../../../components/properties/PropertyCard'
+import PropertyCard from '@/components/properties/PropertyCard'
 import { apiFetch } from '@/lib/api-fetch'
-import type { Property } from '../../../types/property'
+import type { Property } from '@/types/property'
 
 type AnalyticsStatsResponse = {
   today: {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { requireVapiSecret } from '@/lib/require-vapi-secret'
-import type { PropertySearchFilters, PropertySearchResult } from '../../../../types/property'
+import type { PropertySearchFilters, PropertySearchResult } from '@/types/property'
 
 type VapiFunctionCall = {
   name: string

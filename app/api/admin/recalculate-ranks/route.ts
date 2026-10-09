@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAdminAuth, requireManagerOrOwner } from '@/lib/require-admin'
 import { getSupabaseServiceClient } from '@/lib/supabase-service'
-import { calculateBrokerRankForAll } from '../../../../server/lib/broker-rank'
+import { calculateBrokerRankForAll } from '@/server/lib/broker-rank'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
