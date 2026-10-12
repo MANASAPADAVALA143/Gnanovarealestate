@@ -71,18 +71,20 @@ export default function DashboardGroupLayout({ children }: { children: ReactNode
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="border-b border-slate-200 bg-white">
-        <div className="max-w-6xl mx-auto px-6 pt-3">
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-950 leading-snug">
-            <strong className="font-semibold">Seeing a white screen?</strong> Open{' '}
-            <strong>Chrome or Edge</strong> (not Cursor&apos;s Simple Browser) and go to{' '}
-            <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[10px] border border-amber-200">
-              http://localhost:3002/dashboard
-            </code>
-            . Run <code className="font-mono">npm run dashboard</code> (or{' '}
-            <code className="font-mono">npm run next:dev</code>) in this project first —{' '}
-            <code className="font-mono">npm run dev</code> starts Vite on port 3000, not this Next dashboard.
+        {process.env.NODE_ENV === 'development' && (
+          <div className="max-w-6xl mx-auto px-6 pt-3">
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-950 leading-snug">
+              <strong className="font-semibold">Seeing a white screen?</strong> Open{' '}
+              <strong>Chrome or Edge</strong> (not Cursor&apos;s Simple Browser) and go to{' '}
+              <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[10px] border border-amber-200">
+                http://localhost:3002/dashboard
+              </code>
+              . Run <code className="font-mono">npm run dashboard</code> (or{' '}
+              <code className="font-mono">npm run next:dev</code>) in this project first —{' '}
+              <code className="font-mono">npm run dev</code> starts Vite on port 3000, not this Next dashboard.
+            </div>
           </div>
-        </div>
+        )}
         <div className="max-w-6xl mx-auto px-6 py-3 flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-slate-900">Gnanova</span>
           <select
