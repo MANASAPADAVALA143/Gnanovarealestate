@@ -4,27 +4,14 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 let browserClient: SupabaseClient | null = null
 
-function readPublicEnv(key: string): string | undefined {
-  if (typeof process !== 'undefined' && process.env?.[key]) {
-    return process.env[key]
-  }
-  return undefined
-}
-
 /** Browser anon Supabase client for Next dashboard (login + session for apiFetch). */
 export function getSupabaseBrowserClient(): SupabaseClient {
   if (browserClient) return browserClient
 
-  const url =
-    readPublicEnv('NEXT_PUBLIC_SUPABASE_URL') ||
-    readPublicEnv('VITE_SUPABASE_URL') ||
-    readPublicEnv('SUPABASE_URL') ||
-    ''
-  const anonKey =
-    readPublicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
-    readPublicEnv('VITE_SUPABASE_ANON_KEY') ||
-    readPublicEnv('SUPABASE_ANON_KEY') ||
-    ''
+  // Must be literal property reads: Next.js only inlines NEXT_PUBLIC_* into browser bundles
+  // for static `process.env.NAME` references (next.config.mjs maps VITE_* onto these).
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
   if (!url || !anonKey) {
     throw new Error(
