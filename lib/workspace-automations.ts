@@ -7,6 +7,7 @@ import {
 import { startBolnaCall } from './bolna'
 import { normalizePhone } from './bulk-import-helpers'
 import { recordLeadActivity } from './crm-hooks'
+import { notifySalesManager } from './notify-sales-manager'
 import { toE164 } from './phone-e164'
 import { getWorkspaceById, type ResolvedWorkspace } from './workspace-server'
 
@@ -14,6 +15,7 @@ export type AutomationLead = {
   id: string
   name: string
   phone: string
+  email?: string | null
   source: string | null
   location: string | null
   custom_fields?: Record<string, unknown> | null
@@ -29,6 +31,8 @@ export type AutomationOptions = {
 export type AutomationOutcome = {
   bolnaCall: AutomationStatus
   whatsappWelcome: AutomationStatus
+  managerWhatsApp: AutomationStatus
+  managerEmail: AutomationStatus
 }
 
 function errorMessage(e: unknown): string {
@@ -154,7 +158,7 @@ async function runWhatsAppWelcome(
 }
 
 /**
- * Workspace "new lead" automations (instant voice call + WhatsApp welcome).
+ * Workspace "new lead" automations (instant voice call + WhatsApp welcome + sales manager alert).
  * Awaited by callers so serverless functions don't freeze before the requests go out.
  */
 export async function runNewLeadAutomations(
@@ -163,11 +167,17 @@ export async function runNewLeadAutomations(
   lead: AutomationLead,
   options: AutomationOptions = {}
 ): Promise<AutomationOutcome> {
-  const [bolnaCall, whatsappWelcome] = await Promise.all([
+  const [bolnaCall, whatsappWelcome, managerAlert] = await Promise.all([
     runBolnaCall(supabase, workspace, lead),
     runWhatsAppWelcome(supabase, workspace, lead, options),
+    notifySalesManager(supabase, workspace, lead),
   ])
-  return { bolnaCall, whatsappWelcome }
+  return {
+    bolnaCall,
+    whatsappWelcome,
+    managerWhatsApp: managerAlert.whatsapp,
+    managerEmail: managerAlert.email,
+  }
 }
 
 /** Answer workspace keywords (e.g. "INFO") sent by a lead on WhatsApp. Returns true when handled. */

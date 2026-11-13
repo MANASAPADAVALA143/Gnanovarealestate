@@ -76,6 +76,7 @@ export async function intakeWorkspaceLead(
       id: result.lead.id,
       name: input.name,
       phone: input.phone,
+      email: input.email,
       source: input.source,
       location: input.location,
       custom_fields: input.custom_fields,

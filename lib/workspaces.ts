@@ -1,6 +1,6 @@
 import type { PipelineStage } from './pipeline'
 
-export type WorkspaceSlug = 'venkateswara-suites' | 'viseshta-avenues'
+export type WorkspaceSlug = 'venkateswara-suites' | 'viseshta-avenues' | 'ambhuja-maytri'
 
 export type LeadFieldKey = 'name' | 'phone' | 'email' | 'location' | 'source'
 
@@ -51,6 +51,15 @@ export type WorkspaceConfig = {
       /** Reply sent when the lead answers with the keyword. */
       keywordReplies: Readonly<Record<string, string>>
     } | null
+    /** Instant WhatsApp + email alert to the sales manager on every new lead. */
+    managerAlert: {
+      /** Env var holding the manager's WhatsApp number. */
+      whatsappEnv: string
+      /** Env var holding the manager's email address. */
+      emailEnv: string
+      /** Env var holding the name used in the email greeting. */
+      nameEnv: string
+    } | null
   }
 }
 
@@ -66,6 +75,13 @@ const VISESHTA_INFO_REPLY = `Viseshta Avenues — Commercial Co-working, Gachibo
 🏢 Units: 69 available
 
 Our team will call you shortly to answer your questions and schedule a site visit.`
+
+const AMBHUJA_INFO_REPLY = `Ambhuja by Maytri — Villa Township, Hyderabad
+📍 ORR Exit 11, Hyderabad
+
+🏡 Villa plots: 222 sq yd and 300 sq yd
+
+Our team will call you shortly to share pricing and schedule a site visit.`
 
 export const WORKSPACES: Record<WorkspaceSlug, WorkspaceConfig> = {
   'venkateswara-suites': {
@@ -98,6 +114,7 @@ export const WORKSPACES: Record<WorkspaceSlug, WorkspaceConfig> = {
       whatsappQualificationBot: true,
       bolnaCall: null,
       whatsappWelcome: null,
+      managerAlert: null,
     },
   },
   'viseshta-avenues': {
@@ -158,6 +175,58 @@ export const WORKSPACES: Record<WorkspaceSlug, WorkspaceConfig> = {
         templateEnv: 'WHATSAPP_VISESHTA_WELCOME_TEMPLATE',
         brochureUrlEnv: 'VISESHTA_BROCHURE_URL',
         keywordReplies: { INFO: VISESHTA_INFO_REPLY },
+      },
+      managerAlert: null,
+    },
+  },
+  'ambhuja-maytri': {
+    slug: 'ambhuja-maytri',
+    name: 'Ambhuja by Maytri',
+    shortName: 'AM',
+    currency: 'INR',
+    pipelineName: 'Ambhuja Villa Leads',
+    pipelineStages: ['new', 'contacted', 'qualified', 'site_visit', 'negotiation', 'booked', 'closed', 'lost'],
+    sourceTags: [
+      'Instagram',
+      'Facebook',
+      'Google Ads',
+      'Website',
+      'WhatsApp',
+      '99acres',
+      'MagicBricks',
+      'Channel Partner Referral',
+      'Walk-in',
+    ],
+    leadFields: [
+      { label: 'Name', type: 'text', column: 'name', required: true },
+      { label: 'Phone Number', type: 'tel', column: 'phone', required: true },
+      { label: 'Email', type: 'email', column: 'email' },
+      { label: 'Villa Size', type: 'text', customKey: 'villa_size' },
+      { label: 'Budget', type: 'text', customKey: 'budget' },
+      { label: 'Location', type: 'text', column: 'location' },
+      { label: 'Source', type: 'source', column: 'source' },
+      { label: 'Campaign', type: 'text', customKey: 'campaign' },
+      { label: 'Notes', type: 'textarea', customKey: 'notes' },
+    ],
+    project: null,
+    automations: {
+      whatsappQualificationBot: false,
+      bolnaCall: {
+        agentName: 'Ambhuja Telugu Agent',
+        languages: ['Telugu', 'English'],
+        agentIdEnv: 'BOLNA_AMBHUJA_AGENT_ID',
+      },
+      whatsappWelcome: {
+        message:
+          'Hi, thank you for your interest in Ambhuja by Maytri — a villa township at ORR Exit 11, Hyderabad, with 222 & 300 sq yd villas. Our team will call you shortly. Reply INFO for details.',
+        templateEnv: 'WHATSAPP_AMBHUJA_WELCOME_TEMPLATE',
+        brochureUrlEnv: 'AMBHUJA_BROCHURE_URL',
+        keywordReplies: { INFO: AMBHUJA_INFO_REPLY },
+      },
+      managerAlert: {
+        whatsappEnv: 'SALES_MANAGER_WHATSAPP',
+        emailEnv: 'SALES_MANAGER_EMAIL',
+        nameEnv: 'SALES_MANAGER_NAME',
       },
     },
   },

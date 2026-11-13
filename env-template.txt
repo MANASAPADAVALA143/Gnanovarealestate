@@ -91,6 +91,22 @@ WHATSAPP_TEMPLATE_LANGUAGE=en
 # Public PDF URL sent as a WhatsApp document after the welcome message
 VISESHTA_BROCHURE_URL=
 
+# ── Ambhuja by Maytri workspace automations ──
+BOLNA_AMBHUJA_AGENT_ID=
+WHATSAPP_AMBHUJA_WELCOME_TEMPLATE=
+AMBHUJA_BROCHURE_URL=
+# Instant WhatsApp + email alert to the sales manager on every new Ambhuja lead.
+# The WhatsApp alert is free text, which Meta only delivers if this number messaged
+# the business WhatsApp number in the last 24h.
+SALES_MANAGER_WHATSAPP=+91XXXXXXXXXX
+SALES_MANAGER_EMAIL=REPLACE_ME
+SALES_MANAGER_NAME=Sales Team
+# Used for the "Open in CRM" link in alerts (falls back to NEXT_PUBLIC_APP_URL)
+CRM_BASE_URL=https://your-app.vercel.app
+# Email alerts are sent through Resend
+RESEND_API_KEY=REPLACE_ME
+FROM_EMAIL=noreply@gnanova.pro
+
 # ============================================
 # Twilio — Voice/SMS only (WhatsApp migrated to Meta above)
 # ============================================
@@ -156,6 +172,12 @@ GHL_LOCATION_ID=REPLACE_ME
 
 FACEBOOK_VERIFY_TOKEN=gnanova_verify_token_2025
 FACEBOOK_APP_SECRET=REPLACE_ME
+# Webhook URL: https://<your-domain>/api/webhooks/facebook-leads (subscribe the Page to "leadgen").
+# Page access token with leads_retrieval permission — Meta's webhook only sends the lead id,
+# the form answers are fetched with this token.
+FACEBOOK_PAGE_ACCESS_TOKEN=REPLACE_ME
+# Workspace that Facebook/Instagram lead ads land in
+FACEBOOK_LEADS_WORKSPACE=ambhuja-maytri
 
 # ============================================
 # NEW: Integration Settings (Optional)
