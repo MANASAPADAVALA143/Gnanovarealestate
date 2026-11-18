@@ -9,6 +9,7 @@ import Signup from './src/pages/Signup'
 import DashboardLayout from './src/pages/Dashboard/Layout'
 import DashboardHome from './src/pages/Dashboard/Home'
 import LeadsPage from './src/pages/Dashboard/Leads'
+import LeadGenerationPage from './src/pages/Dashboard/LeadGeneration'
 import SettingsPage from './src/pages/Dashboard/Settings'
 import CampaignsPage from './src/pages/Dashboard/Campaigns'
 import IntegrationsPage from './src/pages/Dashboard/Integrations'
@@ -121,6 +122,7 @@ function App() {
             }
           >
             <Route index element={<DashboardHome />} />
+            <Route path="lead-generation" element={<LeadGenerationPage />} />
             <Route path="leads" element={<LeadsPage />} />
             <Route path="pipeline" element={<PipelinePage />} />
             <Route path="deals" element={<DealsPage />} />

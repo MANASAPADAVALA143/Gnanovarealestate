@@ -40,6 +40,8 @@ import {
   Star,
   Bot,
   FileText as DocIcon,
+  Target,
+  type LucideIcon,
 } from 'lucide-react'
 import { featureFlags } from '../../lib/featureFlags'
 
@@ -57,51 +59,75 @@ export default function DashboardLayout() {
     Boolean(agent?.is_manager) || Boolean(agent?.is_owner) || dashboardPreview
   const showAdminNav = isManager
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Leads', href: '/dashboard/leads', icon: Users },
-    { name: 'Pipeline', href: '/dashboard/pipeline', icon: Kanban },
-    { name: 'Deals', href: '/dashboard/deals', icon: Handshake },
-    { name: 'Commissions', href: '/dashboard/commissions', icon: Banknote },
-    { name: 'Broker Invoices', href: '/dashboard/broker-invoices', icon: FileText },
-    ...(showAdminNav
-      ? [{ name: 'Payment Run', href: '/dashboard/payment-run', icon: CreditCard }]
-      : []),
-    { name: 'Tasks', href: '/dashboard/tasks', icon: ListTodo },
-    { name: 'Inbox', href: '/dashboard/inbox', icon: MessageCircle },
-    { name: 'Calls', href: '/dashboard/calls', icon: Phone },
-    { name: 'Properties', href: '/dashboard/properties', icon: Home },
-    { name: 'Suite Inventory', href: '/dashboard/suites', icon: Building2 },
-    { name: 'Club Membership', href: '/dashboard/club-membership', icon: Star },
-    { name: 'Bot Config', href: '/dashboard/bot-configuration', icon: Bot },
-    { name: 'Documents', href: '/dashboard/documents', icon: DocIcon },
-    { name: 'Payment Tracker', href: '/dashboard/payment-tracker', icon: Receipt },
-    ...(showAdminNav
-      ? [
-          { name: 'Owner Dashboard', href: '/dashboard/owner-dashboard', icon: OwnerIcon },
-          { name: 'Invoices', href: '/dashboard/invoices', icon: InvoiceIcon },
-          { name: 'Agreements', href: '/dashboard/agreements', icon: ScrollText },
-        ]
-      : []),
-    { name: 'Facebook Leads', href: '/dashboard/facebook-leads', icon: Facebook },
-    { name: 'WhatsApp Bot', href: '/dashboard/whatsapp-bot', icon: MessageCircle },
-    { name: 'Daily Summary', href: '/dashboard/daily-summary', icon: Sun },
-    { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
-    { name: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
-    { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
-    { name: 'Open House', href: '/dashboard/open-house', icon: DoorOpen },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-    // Manager/owner: Meta Ads, Integrations, Admin
-    ...(showAdminNav
-      ? [
-          { name: 'Meta Ads', href: '/dashboard/meta-ads', icon: TrendingUp },
-          { name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon },
-          { name: 'Admin', href: '/dashboard/admin', icon: Shield },
-        ]
-      : []),
-    { name: 'Data Migration', href: '/dashboard/data-migration', icon: Upload },
-    { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },
-    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  type NavItem = { name: string; href: string; icon: LucideIcon; managerOnly?: boolean }
+  const navigation: { label: string; items: NavItem[] }[] = [
+    {
+      label: 'Command',
+      items: [{ name: 'Executive Dashboard', href: '/dashboard', icon: LayoutDashboard }],
+    },
+    {
+      label: 'Leads',
+      items: [
+        { name: 'Lead Generation', href: '/dashboard/lead-generation', icon: Target },
+        { name: 'Lead Database', href: '/dashboard/leads', icon: Users },
+        { name: 'Pipeline', href: '/dashboard/pipeline', icon: Kanban },
+        { name: 'Follow-ups', href: '/dashboard/tasks', icon: ListTodo },
+      ],
+    },
+    {
+      label: 'Outreach',
+      items: [
+        { name: 'WhatsApp Inbox', href: '/dashboard/inbox', icon: MessageCircle },
+        { name: 'WhatsApp Bot', href: '/dashboard/whatsapp-bot', icon: Bot },
+        { name: 'Campaign Studio', href: '/dashboard/campaigns', icon: Megaphone },
+        { name: 'AI Voice', href: '/dashboard/calls', icon: Phone },
+        { name: 'Facebook Leads', href: '/dashboard/facebook-leads', icon: Facebook },
+      ],
+    },
+    {
+      label: 'Sales',
+      items: [
+        { name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
+        { name: 'Open House', href: '/dashboard/open-house', icon: DoorOpen },
+        { name: 'Deals', href: '/dashboard/deals', icon: Handshake },
+        { name: 'Commissions', href: '/dashboard/commissions', icon: Banknote },
+        { name: 'Broker Invoices', href: '/dashboard/broker-invoices', icon: FileText },
+        { name: 'Payment Run', href: '/dashboard/payment-run', icon: CreditCard, managerOnly: true },
+        { name: 'Collections', href: '/dashboard/payment-tracker', icon: Receipt },
+      ],
+    },
+    {
+      label: 'Properties',
+      items: [
+        { name: 'Properties', href: '/dashboard/properties', icon: Home },
+        { name: 'Suite Inventory', href: '/dashboard/suites', icon: Building2 },
+        { name: 'Listing Writer', href: '/dashboard/listing-writer', icon: PenTool },
+        { name: 'Documents', href: '/dashboard/documents', icon: DocIcon },
+        { name: 'Club Membership', href: '/dashboard/club-membership', icon: Star },
+      ],
+    },
+    {
+      label: 'Intelligence',
+      items: [
+        { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+        { name: 'Daily Summary', href: '/dashboard/daily-summary', icon: Sun },
+        { name: 'Owner Dashboard', href: '/dashboard/owner-dashboard', icon: OwnerIcon, managerOnly: true },
+        { name: 'Invoices', href: '/dashboard/invoices', icon: InvoiceIcon, managerOnly: true },
+        { name: 'Agreements', href: '/dashboard/agreements', icon: ScrollText, managerOnly: true },
+        { name: 'Meta Ads', href: '/dashboard/meta-ads', icon: TrendingUp, managerOnly: true },
+      ],
+    },
+    {
+      label: 'Administration',
+      items: [
+        { name: 'Import Leads', href: '/dashboard/data-migration', icon: Upload },
+        { name: 'Bot Config', href: '/dashboard/bot-configuration', icon: Bot },
+        { name: 'Integrations', href: '/dashboard/integrations', icon: LinkIcon, managerOnly: true },
+        { name: 'Team', href: '/dashboard/admin', icon: Shield, managerOnly: true },
+        { name: 'Agent Settings', href: '/dashboard/agent-settings', icon: UserCog },
+        { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+      ],
+    },
   ]
 
   const handleSignOut = async () => {
@@ -139,7 +165,10 @@ export default function DashboardLayout() {
             <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">VSR</span>
             </div>
-            <span className="text-white font-semibold text-lg">Venkateswara Suites</span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-white">Venkateswara Suites</span>
+              <span className="block text-[10px] font-medium uppercase tracking-wide text-slate-400">Sales CRM</span>
+            </span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -150,26 +179,39 @@ export default function DashboardLayout() {
         </div>
 
         {/* Navigation — scrollable so items below Campaigns stay reachable */}
-        <nav className="flex-1 space-y-1 overflow-y-auto overscroll-contain px-4 py-4">
-          {navigation.map((item) => {
-            const isActive =
-              item.href === '/dashboard'
-                ? location.pathname === '/dashboard'
-                : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)
+        <nav className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4">
+          {navigation.map((group) => {
+            const items = group.items.filter((item) => !item.managerOnly || showAdminNav)
+            if (items.length === 0) return null
             return (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-200 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium">{item.name}</span>
-              </Link>
+              <div key={group.label}>
+                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  {group.label}
+                </p>
+                <div className="space-y-0.5">
+                  {items.map((item) => {
+                    const isActive =
+                      item.href === '/dashboard'
+                        ? location.pathname === '/dashboard'
+                        : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                          isActive
+                            ? 'bg-blue-600 text-white'
+                            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate font-medium">{item.name}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
             )
           })}
           <a

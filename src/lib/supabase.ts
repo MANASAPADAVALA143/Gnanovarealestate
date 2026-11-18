@@ -49,6 +49,27 @@ function offlineSupabaseStub(): ReturnType<typeof createClient> {
 
   const notConfigured = { message: 'Supabase is not configured', code: 'not_configured' as const }
 
+  const queryStub = new Proxy(function () {}, {
+    get(_target, prop) {
+      if (prop === 'then') {
+        return (resolve: (value: { data: never[]; error: typeof notConfigured; count: number }) => void) =>
+          resolve({ data: [], error: notConfigured, count: 0 })
+      }
+      return () => queryStub
+    },
+    apply() {
+      return queryStub
+    },
+  })
+
+  const stubFrom = () => ({
+    select: () => queryStub,
+    insert: () => queryStub,
+    update: () => queryStub,
+    upsert: () => queryStub,
+    delete: () => queryStub,
+  })
+
   const stubAuth = {
     getSession: async () => ({ data: { session: null }, error: null }),
     onAuthStateChange: (callback: (event: string, session: unknown) => void) => {
@@ -65,15 +86,6 @@ function offlineSupabaseStub(): ReturnType<typeof createClient> {
     }),
     signOut: async () => ({ error: null }),
   }
-
-  const stubFrom = () => ({
-    select: () => ({
-      eq: () => ({
-        single: async () => ({ data: null, error: notConfigured }),
-      }),
-    }),
-    insert: async () => ({ data: null, error: notConfigured }),
-  })
 
   return new Proxy({} as ReturnType<typeof createClient>, {
     get(_target, prop) {

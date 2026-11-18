@@ -47,6 +47,11 @@ export default function Signup() {
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
                 <p className="text-red-400 text-sm">{error}</p>
+                {/already registered/i.test(error) && (
+                  <Link to="/login" className="mt-2 inline-block text-sm font-semibold text-blue-300 hover:text-blue-200">
+                    Go to sign in
+                  </Link>
+                )}
               </div>
             )}
 

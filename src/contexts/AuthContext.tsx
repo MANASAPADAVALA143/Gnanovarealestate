@@ -162,6 +162,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (authError) throw authError
       if (!authData.user) throw new Error('No user returned from signup')
+      // Supabase returns the existing user with an empty identities list when the email is taken.
+      if (authData.user.identities && authData.user.identities.length === 0) {
+        throw new Error('This email is already registered. Sign in instead of creating a new account.')
+      }
 
       // 2. RLS agents_self_insert requires authenticated JWT (id = auth.uid())
       if (authData.session) {
@@ -192,12 +196,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           subscription_status: 'trialing',
         })
 
-      if (agentError) throw agentError
+      if (agentError) {
+        const duplicate =
+          agentError.code === '23505' ||
+          /agents_email_key|already registered|duplicate key/i.test(agentError.message || '')
+        if (duplicate) {
+          const { data: ownAgent } = await supabase
+            .from('agents')
+            .select('id')
+            .eq('id', authData.user.id)
+            .maybeSingle()
+          if (!ownAgent) {
+            throw new Error('This email is already registered. Sign in instead of creating a new account.')
+          }
+        } else {
+          throw agentError
+        }
+      }
 
       // 4. Fetch the created agent
       await fetchAgent(authData.user.id)
     } catch (error: any) {
-      throw new Error(error.message || 'Error signing up')
+      const message = error?.message || 'Error signing up'
+      if (/agents_email_key|duplicate key|already registered/i.test(message)) {
+        throw new Error('This email is already registered. Sign in instead of creating a new account.')
+      }
+      throw new Error(message)
     }
   }
 

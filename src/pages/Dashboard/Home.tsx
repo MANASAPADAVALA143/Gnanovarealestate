@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase, type Call } from '../../lib/supabase'
-import { Phone, Users, Calendar, Clock, TrendingUp, TrendingDown, Play, Mic, MicOff } from 'lucide-react'
+import { Phone, Users, Calendar, Clock, Play, Mic, MicOff } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import OverdueFollowUpsWidget from '../../components/crm/OverdueFollowUpsWidget'
 import DealsSummaryWidget from '../../components/crm/DealsSummaryWidget'
@@ -285,10 +285,7 @@ export default function DashboardHome() {
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <Phone className="w-6 h-6 text-blue-600" />
             </div>
-            <span className="text-green-600 text-sm font-medium flex items-center">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              +12%
-            </span>
+            <span className="text-slate-500 text-xs font-medium">Today</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-slate-900">{stats.calls_today}</p>
@@ -321,10 +318,7 @@ export default function DashboardHome() {
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <Calendar className="w-6 h-6 text-green-600" />
             </div>
-            <span className="text-green-600 text-sm font-medium flex items-center">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              +24%
-            </span>
+            <span className="text-slate-500 text-xs font-medium">From calls</span>
           </div>
           <div>
             <p className="text-3xl font-bold text-slate-900">{stats.appointments_booked}</p>
@@ -342,7 +336,7 @@ export default function DashboardHome() {
           <div>
             <p className="text-3xl font-bold text-slate-900">{stats.avg_lead_score}%</p>
             <p className="text-slate-600 text-sm mt-1">Avg Lead Score</p>
-            <p className="text-slate-500 text-xs mt-2">Response time: 3 mins</p>
+            <p className="text-slate-500 text-xs mt-2">Average of scored calls</p>
           </div>
         </div>
       </div>

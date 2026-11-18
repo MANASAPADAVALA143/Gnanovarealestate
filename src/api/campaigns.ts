@@ -41,6 +41,65 @@ export interface CampaignLead {
   updated_at: string
 }
 
+export type ScoreBand = 'hot' | 'warm' | 'cold' | 'unscored'
+
+export type CampaignAudience = {
+  sources?: string[]
+  location?: string
+  bands?: ScoreBand[]
+}
+
+type AudienceLead = {
+  id: string
+  name: string | null
+  phone: string | null
+  status: string | null
+  source: string | null
+  location: string | null
+  lead_score: number | null
+  score_label: string | null
+}
+
+function scoreBand(row: Pick<AudienceLead, 'lead_score' | 'score_label'>): ScoreBand {
+  const label = (row.score_label || '').toLowerCase()
+  if (label.includes('hot')) return 'hot'
+  if (label.includes('warm')) return 'warm'
+  if (label.includes('cold')) return 'cold'
+  if (row.lead_score == null || Number.isNaN(Number(row.lead_score))) return 'unscored'
+  if (row.lead_score >= 75) return 'hot'
+  if (row.lead_score >= 40) return 'warm'
+  return 'cold'
+}
+
+function hasUsablePhone(phone: string | null): boolean {
+  return (phone || '').replace(/\D/g, '').length >= 8
+}
+
+/** Leads that match a voice-campaign audience. Same rules for the preview and the saved list. */
+export async function findAudienceLeads(
+  statuses: string[],
+  audience?: CampaignAudience
+): Promise<{ leads: AudienceLead[]; withPhone: number; error?: string }> {
+  let query = supabase
+    .from('leads')
+    .select('id, name, phone, status, source, location, lead_score, score_label')
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  if (statuses.length > 0) query = query.in('status', statuses)
+  if (audience?.sources && audience.sources.length > 0) query = query.in('source', audience.sources)
+  const location = audience?.location?.trim()
+  if (location) query = query.ilike('location', `%${location}%`)
+
+  const { data, error } = await query
+  if (error) return { leads: [], withPhone: 0, error: error.message }
+
+  let leads = (data || []) as AudienceLead[]
+  const bands = audience?.bands || []
+  if (bands.length > 0) leads = leads.filter((row) => bands.includes(scoreBand(row)))
+  return { leads, withPhone: leads.filter((row) => hasUsablePhone(row.phone)).length }
+}
+
 /**
  * Create a new outbound campaign
  */
@@ -49,20 +108,13 @@ export async function createCampaign(data: {
   description?: string
   leadFilterStatus: string[]
   agentId?: string
+  audience?: CampaignAudience
 }): Promise<{ success: boolean; campaign?: Campaign; error?: string }> {
   try {
     console.log('📋 Creating new campaign:', data.name)
 
-    // Count leads that match the filter
-    let query = supabase
-      .from('leads')
-      .select('id', { count: 'exact', head: true })
-
-    if (data.leadFilterStatus.length > 0) {
-      query = query.in('status', data.leadFilterStatus)
-    }
-
-    const { count } = await query
+    const matched = await findAudienceLeads(data.leadFilterStatus, data.audience)
+    if (matched.error) throw new Error(matched.error)
 
     // Create campaign
     const { data: campaign, error } = await supabase
@@ -72,7 +124,12 @@ export async function createCampaign(data: {
         description: data.description || null,
         status: 'draft',
         lead_filter_status: data.leadFilterStatus,
-        leads_count: count || 0,
+        launch_filters: {
+          sources: data.audience?.sources || [],
+          location: data.audience?.location?.trim() || '',
+          bands: data.audience?.bands || [],
+        },
+        leads_count: matched.leads.length,
         agent_id: data.agentId || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -113,20 +170,16 @@ export async function addLeadsToCampaign(
       throw new Error('Campaign not found')
     }
 
-    // Get leads based on filter
-    let query = supabase.from('leads').select('id, name, phone, status')
+    const filters = (campaign.launch_filters || {}) as CampaignAudience
+    const matched = await findAudienceLeads(campaign.lead_filter_status || [], {
+      sources: filters.sources || [],
+      location: filters.location || '',
+      bands: filters.bands || [],
+    })
+    if (matched.error) throw new Error(matched.error)
+    const leads = matched.leads
 
-    if (campaign.lead_filter_status.length > 0) {
-      query = query.in('status', campaign.lead_filter_status)
-    }
-
-    const { data: leads, error: leadsError } = await query
-
-    if (leadsError) {
-      throw new Error(`Error fetching leads: ${leadsError.message}`)
-    }
-
-    if (!leads || leads.length === 0) {
+    if (leads.length === 0) {
       throw new Error('No leads found matching the filter')
     }
 

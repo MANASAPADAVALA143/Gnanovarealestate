@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import {
+  addLeadsToCampaign,
+  createCampaign,
+  findAudienceLeads,
+  pauseCampaign,
+  startCampaign,
+  type ScoreBand,
+} from '../../api/campaigns'
 import { 
   Play, 
   Pause, 
@@ -19,6 +27,7 @@ interface Campaign {
   description?: string
   status: 'draft' | 'active' | 'paused' | 'completed'
   lead_filter_status: string[]
+  launch_filters?: { sources?: string[]; location?: string; bands?: string[] } | null
   leads_count: number
   calls_made: number
   calls_completed: number
@@ -52,22 +61,21 @@ export default function Campaigns() {
   async function fetchCampaigns() {
     try {
       setLoading(true)
-      
-      const { data, error } = await supabase
-        .from('outbound_campaigns')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      setCampaigns(data || [])
-
-      // Fetch progress for each campaign
-      for (const campaign of data || []) {
+      const result = await Promise.race([
+        supabase.from('outbound_campaigns').select('*').order('created_at', { ascending: false }),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('timeout')), 8000)
+        }),
+      ])
+      if (result.error) throw result.error
+      const rows = result.data || []
+      setCampaigns(rows)
+      for (const campaign of rows) {
         await fetchCampaignProgress(campaign.id)
       }
     } catch (error) {
       console.error('Error fetching campaigns:', error)
+      setCampaigns([])
     } finally {
       setLoading(false)
     }
@@ -92,52 +100,23 @@ export default function Campaigns() {
   }
 
   async function handleStartCampaign(campaignId: string) {
-    if (!confirm('Are you sure you want to start this campaign? All leads will be called.')) {
-      return
-    }
-
-    try {
-      const webhookBase = import.meta.env.VITE_WEBHOOK_URL || ''
-      const response = await fetch(`${webhookBase}/api/campaigns/${campaignId}/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ agentId: agent?.id }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        alert('Campaign started! Calls are being made to all leads.')
-        fetchCampaigns()
-      } else {
-        alert(`Error starting campaign: ${result.error}`)
-      }
-    } catch (error: any) {
-      console.error('Error starting campaign:', error)
-      alert(`Error: ${error.message}`)
+    if (!confirm('Start this voice campaign? Pending leads with a phone number will be called.')) return
+    const result = await startCampaign(campaignId, agent?.id)
+    if (result.success) {
+      alert('Campaign started. Calls are being placed to pending leads.')
+      fetchCampaigns()
+    } else {
+      alert(result.error || 'The campaign could not be started.')
     }
   }
 
   async function handlePauseCampaign(campaignId: string) {
-    try {
-      const webhookBase2 = import.meta.env.VITE_WEBHOOK_URL || ''
-      const response = await fetch(`${webhookBase2}/api/campaigns/${campaignId}/pause`, {
-        method: 'POST',
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        alert('Campaign paused')
-        fetchCampaigns()
-      } else {
-        alert(`Error pausing campaign: ${result.error}`)
-      }
-    } catch (error: any) {
-      console.error('Error pausing campaign:', error)
-      alert(`Error: ${error.message}`)
+    const result = await pauseCampaign(campaignId)
+    if (result.success) {
+      alert('Campaign paused')
+      fetchCampaigns()
+    } else {
+      alert(result.error || 'The campaign could not be paused.')
     }
   }
 
@@ -180,9 +159,9 @@ export default function Campaigns() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Outbound Campaigns</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Campaign Studio</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Call old leads and re-engage cold prospects
+            Voice campaigns for a chosen audience. Delivery counts come from saved campaign records.
           </p>
         </div>
         <button
@@ -346,7 +325,11 @@ export default function Campaigns() {
                       )}
 
                       <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Target: {campaign.lead_filter_status.join(', ')} leads</span>
+                        <span>Target: {(campaign.lead_filter_status || []).join(', ') || 'all statuses'}</span>
+                        {campaign.launch_filters?.location ? <span> · {campaign.launch_filters.location}</span> : null}
+                        {campaign.launch_filters?.bands && campaign.launch_filters.bands.length > 0 ? (
+                          <span> · {campaign.launch_filters.bands.join(', ')}</span>
+                        ) : null}
                         <span>•</span>
                         <span>Created {new Date(campaign.created_at).toLocaleDateString()}</span>
                       </div>
@@ -407,10 +390,10 @@ export default function Campaigns() {
 }
 
 // Create Campaign Modal Component
-function CreateCampaignModal({ 
-  onClose, 
-  onSuccess 
-}: { 
+function CreateCampaignModal({
+  onClose,
+  onSuccess,
+}: {
   onClose: () => void
   onSuccess: () => void
 }) {
@@ -418,126 +401,133 @@ function CreateCampaignModal({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [leadStatuses, setLeadStatuses] = useState<string[]>(['cold'])
+  const [sources, setSources] = useState<string[]>([])
+  const [sourceOptions, setSourceOptions] = useState<string[]>([])
+  const [location, setLocation] = useState('')
+  const [bands, setBands] = useState<ScoreBand[]>([])
   const [loading, setLoading] = useState(false)
   const [leadsCount, setLeadsCount] = useState(0)
+  const [withPhone, setWithPhone] = useState(0)
+  const [formError, setFormError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchLeadsCount()
-  }, [leadStatuses])
-
-  async function fetchLeadsCount() {
-    try {
-      let query = supabase
-        .from('leads')
-        .select('id', { count: 'exact', head: true })
-
-      if (leadStatuses.length > 0) {
-        query = query.in('status', leadStatuses)
-      }
-
-      const { count } = await query
-      setLeadsCount(count || 0)
-    } catch (error) {
-      console.error('Error fetching leads count:', error)
+    let cancelled = false
+    supabase
+      .from('leads')
+      .select('source')
+      .order('created_at', { ascending: false })
+      .limit(500)
+      .then(({ data }) => {
+        if (cancelled) return
+        const unique = [...new Set((data || []).map((row) => (row.source || '').trim()).filter(Boolean))]
+        setSourceOptions(unique.sort())
+      })
+    return () => {
+      cancelled = true
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    findAudienceLeads(leadStatuses, { sources, location, bands }).then((result) => {
+      if (cancelled) return
+      setLeadsCount(result.leads.length)
+      setWithPhone(result.withPhone)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [leadStatuses, sources, location, bands])
 
   function toggleStatus(status: string) {
-    if (leadStatuses.includes(status)) {
-      setLeadStatuses(leadStatuses.filter(s => s !== status))
-    } else {
-      setLeadStatuses([...leadStatuses, status])
-    }
+    setLeadStatuses((current) =>
+      current.includes(status) ? current.filter((item) => item !== status) : [...current, status]
+    )
+  }
+
+  function toggleSource(source: string) {
+    setSources((current) =>
+      current.includes(source) ? current.filter((item) => item !== source) : [...current, source]
+    )
+  }
+
+  function toggleBand(band: ScoreBand) {
+    setBands((current) => (current.includes(band) ? current.filter((item) => item !== band) : [...current, band]))
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-
+    setFormError(null)
     if (!name.trim()) {
-      alert('Please enter a campaign name')
+      setFormError('Enter a campaign name.')
       return
     }
-
     if (leadStatuses.length === 0) {
-      alert('Please select at least one lead status')
+      setFormError('Select at least one lead status.')
+      return
+    }
+    if (leadsCount === 0) {
+      setFormError('No leads match this audience.')
       return
     }
 
-    try {
-      setLoading(true)
-
-      const webhookBase3 = import.meta.env.VITE_WEBHOOK_URL || ''
-      const response = await fetch(`${webhookBase3}/api/campaigns/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          description,
-          leadFilterStatus: leadStatuses,
-          agentId: agent?.id,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        alert(`Campaign created! ${result.campaign.leads_count} leads added.`)
-        onSuccess()
-      } else {
-        alert(`Error: ${result.error}`)
-      }
-    } catch (error: any) {
-      console.error('Error creating campaign:', error)
-      alert(`Error: ${error.message}`)
-    } finally {
+    setLoading(true)
+    const created = await createCampaign({
+      name: name.trim(),
+      description,
+      leadFilterStatus: leadStatuses,
+      agentId: agent?.id,
+      audience: { sources, location, bands },
+    })
+    if (!created.success || !created.campaign) {
       setLoading(false)
+      setFormError(created.error || 'The campaign could not be saved.')
+      return
     }
+    const attached = await addLeadsToCampaign(created.campaign.id)
+    setLoading(false)
+    if (!attached.success) {
+      setFormError(attached.error || 'The campaign was saved, but the audience could not be attached.')
+      return
+    }
+    onSuccess()
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-lg w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Create New Campaign</h2>
+      <div className="bg-white rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">New voice campaign</h2>
+        <p className="text-sm text-gray-500 mb-4">Saves a draft and the matching leads. Starting it places real calls.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Campaign Name */}
+          {formError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</div>
+          )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Campaign Name
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Campaign name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Re-engage Cold Leads Q1 2025"
+              placeholder="Re-engage cold leads"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
-
-          {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description (Optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the campaign goal..."
-              rows={3}
+              placeholder="What this campaign is for"
+              rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-
-          {/* Lead Status Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Lead Status to Call
-            </label>
-            <div className="space-y-2">
-              {['cold', 'warm', 'new'].map((status) => (
+            <label className="block text-sm font-medium text-gray-700 mb-2">Lead status</label>
+            <div className="flex flex-wrap gap-3">
+              {['cold', 'warm', 'new', 'hot'].map((status) => (
                 <label key={status} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -545,29 +535,62 @@ function CreateCampaignModal({
                     onChange={() => toggleStatus(status)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-700 capitalize">{status} Leads</span>
+                  <span className="text-sm text-gray-700 capitalize">{status}</span>
                 </label>
               ))}
             </div>
           </div>
-
-          {/* Leads Count Preview */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  {leadsCount} leads will be called
-                </p>
-                <p className="text-xs text-gray-600">
-                  Based on your selected filters
-                </p>
-              </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Score band</label>
+            <div className="flex flex-wrap gap-3">
+              {(['hot', 'warm', 'cold', 'unscored'] as ScoreBand[]).map((band) => (
+                <label key={band} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bands.includes(band)}
+                    onChange={() => toggleBand(band)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 capitalize">{band}</span>
+                </label>
+              ))}
             </div>
+            <p className="mt-1 text-xs text-gray-500">Leave all unchecked to include every score.</p>
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-4">
+          {sourceOptions.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Source</label>
+              <div className="flex flex-wrap gap-3">
+                {sourceOptions.map((source) => (
+                  <label key={source} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={sources.includes(source)}
+                      onChange={() => toggleSource(source)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{source}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Leave all unchecked to include every source.</p>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Location contains</label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Tirupathi"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm font-medium text-gray-900">{leadsCount} leads match</p>
+            <p className="text-xs text-gray-600">{withPhone} have a phone number and can be called</p>
+          </div>
+          <div className="flex items-center gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
@@ -581,7 +604,7 @@ function CreateCampaignModal({
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
               disabled={loading || leadsCount === 0}
             >
-              {loading ? 'Creating...' : 'Create Campaign'}
+              {loading ? 'Saving...' : 'Save draft'}
             </button>
           </div>
         </form>
